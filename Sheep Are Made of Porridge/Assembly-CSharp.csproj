@@ -58,7 +58,9 @@
      <Compile Include="Assets\EventManager\GameEventWithMessage.cs" />
      <Compile Include="Assets\EventManager\GameEventWithMessageAndData.cs" />
      <Compile Include="Assets\EventManager\ListenerLookupKey.cs" />
-     <Compile Include="Assets\Scripts\PlayerMovement.cs" />
+     <Compile Include="Assets\Scripts\CursorTracking.cs" />
+     <Compile Include="Assets\Scripts\PlayerKinemeticMovement.cs" />
+     <Compile Include="Assets\Scripts\PlayerPhysicsMovement.cs" />
      <Compile Include="Assets\Scripts\VelocityCap.cs" />
  <Reference Include="UnityEngine.UI">
  <HintPath>C:/Program Files/Unity/Editor/Data/UnityExtensions/Unity/GUISystem/UnityEngine.UI.dll</HintPath>

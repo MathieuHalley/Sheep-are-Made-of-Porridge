@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 
-public class PlayerMovement : MonoBehaviour 
+public class PlayerPhysicsMovement : MonoBehaviour 
 {
 	public float movementImpulse = 4f;
 	public float jumpImpulse = 10f;
@@ -45,7 +45,7 @@ public class PlayerMovement : MonoBehaviour
 
 	private void OnGUI()
 	{
-		GUI.Box(new Rect(0, 0, Screen.width, Screen.height), 
+		GUI.Box(new Rect(0, 0, Screen.width, Screen.height / 4), 
 			"Socrate's Velocity: " + rigidbody2D.velocity.ToString()  + " (" + rigidbody2D.velocity.magnitude.ToString() + ")\n" +
 			"MoveDir: " + xAxisMoveDir + "  InputDir: " + Input.GetAxis("Horizontal"));
 	}
