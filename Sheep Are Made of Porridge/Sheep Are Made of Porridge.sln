@@ -1,7 +1,7 @@
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2008
-
-Project("{6CD92476-6239-C723-B449-90BA65B43D38}") = "Sheep Are Made of Porridge", "Assembly-CSharp.csproj", "{9ACD876B-CEC5-AAE6-4296-AD87CB8DAE26}"
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2015
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sheep Are Made of Porridge.CSharp", "Sheep Are Made of Porridge.CSharp.csproj", "{9BA92E5A-88A2-6591-6B93-609E2F846108}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -9,15 +9,12 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{9ACD876B-CEC5-AAE6-4296-AD87CB8DAE26}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{9ACD876B-CEC5-AAE6-4296-AD87CB8DAE26}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9ACD876B-CEC5-AAE6-4296-AD87CB8DAE26}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{9ACD876B-CEC5-AAE6-4296-AD87CB8DAE26}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9BA92E5A-88A2-6591-6B93-609E2F846108}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9BA92E5A-88A2-6591-6B93-609E2F846108}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9BA92E5A-88A2-6591-6B93-609E2F846108}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9BA92E5A-88A2-6591-6B93-609E2F846108}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(MonoDevelopProperties) = preSolution
-		StartupItem = Assembly-CSharp.csproj
 	EndGlobalSection
 EndGlobal

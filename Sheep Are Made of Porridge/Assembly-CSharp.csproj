@@ -59,6 +59,11 @@
      <Compile Include="Assets\EventManager\GameEventWithMessageAndData.cs" />
      <Compile Include="Assets\EventManager\ListenerLookupKey.cs" />
      <Compile Include="Assets\Scripts\CursorTracking.cs" />
+     <Compile Include="Assets\Scripts\Graph.cs" />
+     <Compile Include="Assets\Scripts\GraphNode.cs" />
+     <Compile Include="Assets\Scripts\GraphTest.cs" />
+     <Compile Include="Assets\Scripts\Node.cs" />
+     <Compile Include="Assets\Scripts\NodeList.cs" />
      <Compile Include="Assets\Scripts\PlayerKinemeticMovement.cs" />
      <Compile Include="Assets\Scripts\PlayerPhysicsMovement.cs" />
      <Compile Include="Assets\Scripts\VelocityCap.cs" />
