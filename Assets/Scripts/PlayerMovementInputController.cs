@@ -5,48 +5,35 @@ using UniRx.Triggers;
 public class PlayerMovementInputController : MonoBehaviour
 {
 	[SerializeField]
-	private Rigidbody2D _rigidbody;
-	[SerializeField]
-	private MovementControllerData _movementControllerData;
+	private MovementController _movementController;
 
-//	private IObservable<Vector2> movement;
+	public MovementController Controller { get { return _movementController; } }
 
 	private void Start()
 	{
-		this.FixedUpdateAsObservable()
+		var fixedUpdate = this.FixedUpdateAsObservable();
+		fixedUpdate
 			.Select(_ => new Vector2(Input.GetAxis("Horizontal"), 0))
-			.Subscribe(ProcessMovementInput);
-
-		this.FixedUpdateAsObservable()
-			.Where(_ => Input.GetKeyDown(KeyCode.Space) == true && _movementControllerData.IsGrounded == true)
+			.Subscribe(_movementController.ProcessMovementInput);
+		fixedUpdate
+			.Where(_ => Input.GetKeyDown(KeyCode.Space) && _movementController.Data.IsGrounded)
 			.Select(_ => true)
-			.Subscribe(ProcessJumpInput);
-
-		this.FixedUpdateAsObservable()
-			.Where(_ => Mathf.Approximately(_rigidbody.velocity.y, 0f))
-			.Subscribe(_ => { _movementControllerData.IsGrounded = true; _movementControllerData.IsJumping = false; });
-	}
-
-	private void ProcessMovementInput(Vector2 movementInput)
-	{
-		MovementParameters currentMovementParameters = _movementControllerData.StandardMovementParameters;
-
-		if (_movementControllerData.IsFastMoving && !_movementControllerData.IsSlowMoving)
-			currentMovementParameters = _movementControllerData.FastMovementParameters;
-		else if (!_movementControllerData.IsFastMoving && _movementControllerData.IsSlowMoving)
-			currentMovementParameters = _movementControllerData.SlowMovementParameters;
-
-		_rigidbody.AddForce(new Vector2(movementInput.x, 0) * currentMovementParameters.Force);
-		Mathf.Clamp(_rigidbody.velocity.x, -currentMovementParameters.MaxVelocity, currentMovementParameters.MaxVelocity);
-
-		_movementControllerData.IsMoving = (movementInput.magnitude > 0) ? true : false;
-	}
-
-	private void ProcessJumpInput(bool jumpInput)
-	{
-		_movementControllerData.IsJumping = true;
-		_movementControllerData.IsGrounded = false;
-		float jumpForce = Mathf.Sqrt(2f * _movementControllerData.JumpHeight * -Physics2D.gravity.y);
-		_rigidbody.AddForce(new Vector2(0, jumpForce),ForceMode2D.Impulse);
+			.Subscribe(_movementController.ProcessJumpInput);
+		fixedUpdate
+			.Where(_ => Input.GetKeyDown(KeyCode.LeftShift) && !_movementController.Data.IsFastMoving)
+			.Select(_ => true)
+			.Subscribe(_movementController.ProcessFastMovementToggleInput);
+		fixedUpdate
+			.Where(_ => Input.GetKeyUp(KeyCode.LeftShift) && _movementController.Data.IsFastMoving)
+			.Select(_ => false)
+			.Subscribe(_movementController.ProcessFastMovementToggleInput);
+		fixedUpdate
+			.Where(_ => Input.GetAxis("Vertical") < 0f && !_movementController.Data.IsSlowMoving)
+			.Select(_ => true)
+			.Subscribe(_movementController.ProcessSlowMovementToggleInput);
+		fixedUpdate
+			.Where(_ => Input.GetAxis("Vertical") == 0f && _movementController.Data.IsSlowMoving)
+			.Select(_ => false)
+			.Subscribe(_movementController.ProcessSlowMovementToggleInput);
 	}
 }
