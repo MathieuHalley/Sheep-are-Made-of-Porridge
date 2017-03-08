@@ -11,15 +11,7 @@ public class MovementControllerData : MonoBehaviour
 	private BoolReactiveProperty _isJumpingProperty = new BoolReactiveProperty(false);
 	[SerializeField]
 	private BoolReactiveProperty _isMovingProperty = new BoolReactiveProperty(false);
-	[SerializeField]
-	private BoolReactiveProperty _isFastMovingProperty = new BoolReactiveProperty(false);
-	[SerializeField]
-	private BoolReactiveProperty _isSlowMovingProperty = new BoolReactiveProperty(false);
 	[SerializeField] 
-	private MovementParameters _fastMovementParameters = new MovementParameters();
-	[SerializeField]
-	private MovementParameters _slowMovementParameters = new MovementParameters();
-	[SerializeField]
 	private MovementParameters _standardMovementParameters = new MovementParameters();
 	[SerializeField]
 	private float _jumpHeight = 1f;
@@ -32,10 +24,6 @@ public class MovementControllerData : MonoBehaviour
 	public BoolReactiveProperty IsGroundedProperty { get { return _isGroundedProperty; } }
 	public BoolReactiveProperty IsJumpingProperty { get { return _isJumpingProperty; } }
 	public BoolReactiveProperty IsMovingProperty { get { return _isMovingProperty; } }
-	public BoolReactiveProperty IsFastMovingProperty { get { return _isFastMovingProperty; } }
-	public BoolReactiveProperty IsSlowMovingProperty { get { return _isSlowMovingProperty; } }
-	public MovementParameters FastMovementParameters { get { return _fastMovementParameters; } }
-	public MovementParameters SlowMovementParameters { get { return _slowMovementParameters; } }
 	public MovementParameters StandardMovementParameters { get { return _standardMovementParameters; } }
 	public float JumpHeight { get { return _jumpHeight; } }
 	public float GroundCheckRadius { get { return _groundCheckRadius; } }
@@ -60,15 +48,5 @@ public class MovementControllerData : MonoBehaviour
 	{
 		get { return _isMovingProperty.Value; }
 		set { _isMovingProperty.Value = value; }
-	}
-	public bool IsFastMoving
-	{
-		get { return _isFastMovingProperty.Value; }
-		set { _isFastMovingProperty.Value = value; }
-	}
-	public bool IsSlowMoving
-	{
-		get { return _isSlowMovingProperty.Value; }
-		set { _isSlowMovingProperty.Value = value; }
 	}
 }

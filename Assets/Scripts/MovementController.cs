@@ -26,16 +26,13 @@ public class MovementController : MonoBehaviour
 	public void ProcessMovementInput(Vector2 movementInput)
 	{
 		MovementParameters movementParameters = Data.StandardMovementParameters;
-
-		if (Data.IsFastMoving && !_movementControllerData.IsSlowMoving)
-			movementParameters = Data.FastMovementParameters;
-		else if (!Data.IsFastMoving && Data.IsSlowMoving)
-			movementParameters = Data.SlowMovementParameters;
-
-		_rigidbody.AddForce(new Vector2(movementInput.x, 0) * movementParameters.Force);
+		Data.IsMoving = movementInput.x != 0 ? true : false;
+		Vector2 movementForce = Data.IsMoving
+			?  Mathf.Abs(movementParameters.AccelerationForce) * Vector2.right * movementInput.x
+			: -Mathf.Abs(movementParameters.DecelerationForce) * Vector2.right * _rigidbody.velocity.x;
+		_rigidbody.AddForce(movementForce);
 		_rigidbody.velocity = new Vector2(Mathf.Clamp(_rigidbody.velocity.x, -movementParameters.MaxVelocity, movementParameters.MaxVelocity), _rigidbody.velocity.y);
 		Data.MovementVelocity = _rigidbody.velocity;
-		Data.IsMoving = (movementInput.magnitude > 0) ? true : false;
 	}
 
 	public void ProcessJumpInput(bool jumpInput)
@@ -44,18 +41,6 @@ public class MovementController : MonoBehaviour
 		_rigidbody.AddForce(new Vector2(0, jumpForce), ForceMode2D.Impulse);
 		Data.IsJumping = true;
 		Data.IsGrounded = false;
-	}
-
-	public void ProcessFastMovementToggleInput(bool newIsFastMoving)
-	{
-		if (Data.IsFastMoving != newIsFastMoving)
-			Data.IsFastMoving = newIsFastMoving;
-	}
-
-	public void ProcessSlowMovementToggleInput(bool newIsSlowMoving)
-	{
-		if (Data.IsSlowMoving != newIsSlowMoving)
-			Data.IsSlowMoving = newIsSlowMoving;
 	}
 
 	private bool IsGroundCollision(Collision2D collision)
