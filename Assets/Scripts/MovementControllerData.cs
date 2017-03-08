@@ -28,7 +28,6 @@ public class MovementControllerData : MonoBehaviour
 	public float JumpHeight { get { return _jumpHeight; } }
 	public float GroundCheckRadius { get { return _groundCheckRadius; } }
 	public string GroundLayer { get { return _groundLayer; } }
-	public Vector3 MovementDirection { get { return _movementVelocityProperty.Value.normalized; } }
 	public Vector3 MovementVelocity
 	{
 		get { return _movementVelocityProperty.Value; }

@@ -15,11 +15,9 @@ public class MovementController : MonoBehaviour
 	{
 		this.OnCollisionEnter2DAsObservable()
 			.Where(collision => Data.IsGrounded == false && IsGroundCollision(collision) == true)
-			.TakeUntilDestroy(this)
 			.Subscribe(OnGroundCollisionEnter);
 		this.OnCollisionExit2DAsObservable()
 			.Where(collision => Data.IsGrounded == true && IsGroundCollision(collision) == false)
-			.TakeUntilDestroy(this)
 			.Subscribe(OnGroundCollisionEnter);
 	}
 
@@ -27,20 +25,22 @@ public class MovementController : MonoBehaviour
 	{
 		MovementParameters movementParameters = Data.StandardMovementParameters;
 		Data.IsMoving = movementInput.x != 0 ? true : false;
-		Vector2 movementForce = Data.IsMoving
-			?  Mathf.Abs(movementParameters.AccelerationForce) * Vector2.right * movementInput.x
-			: -Mathf.Abs(movementParameters.DecelerationForce) * Vector2.right * _rigidbody.velocity.x;
-		_rigidbody.AddForce(movementForce);
+		Vector2 movementForce = Vector2.right;
+		movementForce *= Data.IsMoving
+			? Mathf.Abs(movementParameters.AccelerationForce) * movementInput.x
+			:-Mathf.Abs(movementParameters.DecelerationForce) * _rigidbody.velocity.x / movementParameters.MaxVelocity;
+		_rigidbody.AddForce(movementForce, ForceMode2D.Impulse);
 		_rigidbody.velocity = new Vector2(Mathf.Clamp(_rigidbody.velocity.x, -movementParameters.MaxVelocity, movementParameters.MaxVelocity), _rigidbody.velocity.y);
 		Data.MovementVelocity = _rigidbody.velocity;
 	}
 
 	public void ProcessJumpInput(bool jumpInput)
 	{
-		float jumpForce = Mathf.Sqrt(2f * Data.JumpHeight * -Physics2D.gravity.y);
+		float jumpForce = Mathf.Sqrt(2f * Data.JumpHeight * -Physics2D.gravity.y * _rigidbody.gravityScale);
 		_rigidbody.AddForce(new Vector2(0, jumpForce), ForceMode2D.Impulse);
 		Data.IsJumping = true;
 		Data.IsGrounded = false;
+		Data.MovementVelocity = _rigidbody.velocity;
 	}
 
 	private bool IsGroundCollision(Collision2D collision)
