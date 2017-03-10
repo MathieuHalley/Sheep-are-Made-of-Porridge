@@ -22,25 +22,15 @@ public class CrowTreeControllerData : MonoBehaviour
 		get { return _isSheepInRangeProperty.Value; }
 		set { _isSheepInRangeProperty.Value = value; }
 	}
-	public Queue<GameObject> CrowCollection
-	{
-		get { return _crowCollection; }
-		set { _crowCollection = value; }
-	}
-	public Vector2 SheepTarget
-	{
-		get { return _sheepTarget; }
-		set { _sheepTarget = value; }
-	}
-	public Vector2 NestTarget
-	{
-		get { return _nestTarget; }
-		set { _nestTarget = value; }
-	}
+
+	public Queue<GameObject> CrowCollection { get { return _crowCollection; } }
+	public Vector2 SheepTarget { get { return _sheepTarget; } }
+	public Vector2 NestTarget { get { return _nestTarget; } }
 
 	private void Awake()
 	{
-		_nestTarget = (Vector2)this.transform.position + Vector2.up;
+		if (_nestTarget == Vector2.zero)
+			_nestTarget = (Vector2)this.transform.position + Vector2.up;
 		for (int i = 0; i < 3; i++)
 		{
 			GameObject newCrow = Instantiate<GameObject>(
@@ -48,8 +38,7 @@ public class CrowTreeControllerData : MonoBehaviour
 				this.gameObject.transform.position,
 				Quaternion.identity,
 				this.transform);
-			CrowControllerData newCrowData = newCrow.GetComponent<CrowControllerData>();
-			newCrowData.IsSwooping = false;
+			newCrow.GetComponent<CrowController>().SetCrowTarget(_nestTarget);
 			_crowCollection.Enqueue(newCrow);
 		}
 	}

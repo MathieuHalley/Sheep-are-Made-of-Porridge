@@ -4,24 +4,25 @@ using UniRx;
 public class CrowControllerData : MonoBehaviour
 {
 	[SerializeField]
-	BoolReactiveProperty _isSwoopingProperty = new BoolReactiveProperty(false);
+	private Vector2ReactiveProperty _targetProperty = new Vector2ReactiveProperty(Vector2.zero);
 	[SerializeField]
 	private MovementParameters _standardMovementParameters = new MovementParameters();
-	[SerializeField]
-	private Vector2 _target = new Vector2();
 
-
-	public BoolReactiveProperty IsSwoopingProperty { get { return _isSwoopingProperty; } }
+	public BoolReactiveProperty IsActiveProperty { get; private set; }
+	public Vector2ReactiveProperty TargetProperty { get { return _targetProperty; } }
 	public MovementParameters StandardMovementParameters { get { return _standardMovementParameters; } }
 
-	public bool IsSwooping
-	{
-		get { return _isSwoopingProperty.Value; }
-		set { _isSwoopingProperty.Value = value; }
-	}
 	public Vector2 Target
 	{
-		get { return _target; }
-		set { _target = value; }
+		get { return _targetProperty.Value; }
+		set { _targetProperty.Value = value; }
+	}
+
+	private void Awake()
+	{
+		IsActiveProperty = _targetProperty
+			.Select(t => t != (Vector2)this.gameObject.transform.position)
+			.ToReactiveProperty<bool>() 
+			as BoolReactiveProperty;
 	}
 }

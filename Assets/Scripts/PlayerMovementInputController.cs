@@ -6,18 +6,21 @@ public class PlayerMovementInputController : MonoBehaviour
 {
 	[SerializeField]
 	private MovementController _movementController;
+	private Rigidbody2D _rigidbody;
 
-	public MovementController Controller { get { return _movementController; } }
+	private void Awake()
+	{
+		_rigidbody = GetComponent<Rigidbody2D>();
+	}
 
 	private void Start()
 	{
 		this.FixedUpdateAsObservable()
-			.Where(_ => Input.GetAxis("Horizontal") != 0 || _movementController.Data.MovementVelocity.x != 0)
 			.Select(_ => new Vector2(Input.GetAxis("Horizontal"), 0))
+			.Where(v => v.x != 0 || _rigidbody.velocity.x != 0)
 			.Subscribe(_movementController.ProcessMovementInput);
 		this.FixedUpdateAsObservable()
-			.Where(_ => Input.GetKey(KeyCode.Space) && _movementController.Data.IsGrounded)
-			.Select(_ => true)
+			.Where(_ => Input.GetKey(KeyCode.Space))
 			.Subscribe(_movementController.ProcessJumpInput);
 	}
 }
