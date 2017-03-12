@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using UniRx;
 using UniRx.Triggers;
+using System;
 
 public class CrowTreeController : MonoBehaviour
 {
@@ -12,38 +13,41 @@ public class CrowTreeController : MonoBehaviour
 	{
 		this.OnTriggerEnter2DAsObservable()
 			.Where(col => col.tag == "Player")
-			.Subscribe(_ => 
+			.Subscribe(col =>
 			{
 				Data.IsSheepInRange = true;
-			}).AddTo(this);
+				Data.SheepTarget = col.transform;
+			})
+			.AddTo(this);
+
 		this.OnTriggerExit2DAsObservable()
 			.Where(col => col.tag == "Player")
+			.Subscribe(_ => Data.IsSheepInRange = false)
+			.AddTo(this);
+		
+		Data.IsSheepInRangeProperty.AsObservable()
+			.Where(_ => Data.IsSheepInRange == true)
+			.Throttle(TimeSpan.FromSeconds(1))
+			.Merge(
+				Observable.Timer(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1))
+				.Where(_ => Data.IsSheepInRange == true)
+				.Select(_ => Data.IsSheepInRange)
+			)
 			.Subscribe(_ =>
 			{
-				Data.IsSheepInRange = false;
-				foreach (GameObject crow in Data.CrowCollection)
-				{
-					crow.GetComponent<CrowController>().SetCrowTarget(Data.NestTarget);
-				}
-			}).AddTo(this);
-
-		//	If only the Join or Window operators existed
-		//Data.IsSheepInRangeProperty
-		//	.AsObservable()
-		//	.Where(inRange => inRange == true)
-			
-		//Data.IsSheepInRangeProperty
-		//	.AsObservable()
-		//	.Where(inRange => inRange == false)
-
-		Data.IsSheepInRangeProperty
-			.Sample(System.TimeSpan.FromSeconds(1))
-			.Timestamp()
-			.Do(_ => Debug.Log(_.Timestamp.ToString() + " boop"))
-			.Subscribe(_ =>
-			{
-				Data.CrowCollection.Peek().GetComponent<CrowController>().SetCrowTarget(Data.SheepTarget);
+				Data.CrowCollection.Peek().GetComponent<CrowController>().SetCrowTarget(Data.SheepTarget.position);
 				Data.CrowCollection.Enqueue(Data.CrowCollection.Dequeue());
-			}).AddTo(this);
+			})
+			.AddTo(this);
+
+		Data.IsSheepInRangeProperty.AsObservable()
+			.Where(_ => Data.IsSheepInRange == false)
+			.Subscribe(_ =>
+			{
+				foreach (GameObject crow in Data.CrowCollection)
+					crow.GetComponent<CrowController>().SetCrowTarget(Data.NestTarget);
+			})
+			.AddTo(this);
 	}
+
 }

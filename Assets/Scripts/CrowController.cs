@@ -20,7 +20,8 @@ public class CrowController : MonoBehaviour
 		this.FixedUpdateAsObservable()
 			.Where(_ => Data.Target != (Vector2)this.gameObject.transform.position)
 			.Select(_ => Data.Target)
-			.Subscribe(ProcessCrowMovement);
+			.Subscribe(ProcessCrowMovement)
+			.AddTo(this);
 	}
 
 	public void SetCrowTarget(Vector2 newTarget)
@@ -30,11 +31,16 @@ public class CrowController : MonoBehaviour
 
 	public void ProcessCrowMovement(Vector2 target)
 	{
-		_rigidbody.MovePosition(
-			Vector2.MoveTowards(
-				this.transform.position, 
-				target, 
-				Data.StandardMovementParameters.MaxVelocity
-		));
+		Vector2 movementVector = target - (Vector2)this.transform.position;
+		Vector2 movementForce = movementVector.normalized;
+		movementForce *= Mathf.Abs(Data.StandardMovementParameters.AccelerationForce);
+		_rigidbody.AddForce(movementForce, ForceMode2D.Force);
+		_rigidbody.velocity = Vector3.ClampMagnitude(_rigidbody.velocity, Mathf.Min(movementVector.magnitude,Data.StandardMovementParameters.MaxVelocity));
+		//_rigidbody.MovePosition(
+		//	Vector2.MoveTowards(
+		//		this.transform.position,
+		//		target,
+		//		Data.StandardMovementParameters.MaxVelocity * Time.deltaTime
+		//));
 	}
 }

@@ -10,7 +10,7 @@ public class CrowTreeControllerData : MonoBehaviour
 	[SerializeField]
 	private GameObject _crowPrefab;
 	[SerializeField]
-	private Vector2 _sheepTarget;
+	private Transform _sheepTarget;
 	[SerializeField]
 	private Vector2 _nestTarget;
 	private Queue<GameObject> _crowCollection = new Queue<GameObject>(3);
@@ -24,8 +24,12 @@ public class CrowTreeControllerData : MonoBehaviour
 	}
 
 	public Queue<GameObject> CrowCollection { get { return _crowCollection; } }
-	public Vector2 SheepTarget { get { return _sheepTarget; } }
 	public Vector2 NestTarget { get { return _nestTarget; } }
+	public Transform SheepTarget
+	{
+		get { return _sheepTarget; }
+		set { _sheepTarget = value; }
+	}
 
 	private void Awake()
 	{
