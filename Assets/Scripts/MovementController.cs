@@ -1,13 +1,14 @@
 ﻿using UnityEngine;
 using UniRx;
 using UniRx.Triggers;
+using System;
 
 public class MovementController : MonoBehaviour
 {
 	[SerializeField]
-	private MovementControllerData _movementControllerData;
+	private MovementControllerData _data;
 	private Rigidbody2D _rigidbody;
-	private MovementControllerData Data { get { return _movementControllerData; } }
+	private MovementControllerData Data { get { return _data; } }
 
 	private void Awake()
 	{
@@ -16,33 +17,24 @@ public class MovementController : MonoBehaviour
 
 	private void Start()
 	{
-		this.OnCollisionEnter2DAsObservable()
-			.Where(collision => Data.IsGrounded == false && IsGroundCollision(collision) == true)
-			.Subscribe(_ =>
-			{
-				Data.IsGrounded = true;
-				Data.IsJumping = false;
-			}).AddTo(this);
-		this.OnCollisionExit2DAsObservable()
-			.Where(collision => Data.IsGrounded == true && IsGroundCollision(collision) == false)
-			.Subscribe(_ =>
-			{
-				Data.IsGrounded = false;
-			}).AddTo(this);
+		GroundCollisionEnterSubscription();
+		GroundCollisionExitSubscription();
 	}
 
 	public void ProcessMovementInput(Vector2 movementInput)
 	{
-		MovementParameters movementParameters = Data.StandardMovementParameters;
+		MovementParameters movementParams = Data.MovementParameters;
 		Vector2 movementForce = Vector2.right;
+		float maxVelocity = movementParams.MaxVelocity;
+		float clampedVelocityX;
+
 		movementForce *= movementInput.x != 0
-			? Mathf.Abs(movementParameters.AccelerationForce) * movementInput.x
-			:-Mathf.Abs(movementParameters.DecelerationForce) * _rigidbody.velocity.x / movementParameters.MaxVelocity;
+			? Mathf.Abs(movementParams.AccelerationForce) * movementInput.x
+			:-Mathf.Abs(movementParams.DecelerationForce) * _rigidbody.velocity.x / maxVelocity;
 		_rigidbody.AddForce(movementForce, ForceMode2D.Impulse);
-		_rigidbody.velocity = new Vector2(
-			Mathf.Clamp(_rigidbody.velocity.x, -movementParameters.MaxVelocity, movementParameters.MaxVelocity), 
-			_rigidbody.velocity.y
-		);
+		clampedVelocityX = Mathf.Clamp(_rigidbody.velocity.x, -maxVelocity, maxVelocity);
+		_rigidbody.velocity = new Vector2(clampedVelocityX, _rigidbody.velocity.y);
+
 		Data.MovementVelocity = _rigidbody.velocity;
 	}
 
@@ -51,7 +43,9 @@ public class MovementController : MonoBehaviour
 		if (!Data.IsGrounded)
 			return;
 		float jumpForce = Mathf.Sqrt(2f * Data.JumpHeight * -Physics2D.gravity.y * _rigidbody.gravityScale);
+
 		_rigidbody.AddForce(new Vector2(0, jumpForce), ForceMode2D.Impulse);
+
 		Data.IsJumping = true;
 		Data.IsGrounded = false;
 		Data.MovementVelocity = _rigidbody.velocity;
@@ -69,5 +63,26 @@ public class MovementController : MonoBehaviour
 				Data.GroundCheckRadius,
 				1 << groundLayer);
 		return groundCheckHit.collider != null ? true : false;
+	}
+
+	private IDisposable GroundCollisionEnterSubscription()
+	{
+		return this
+			.OnCollisionEnter2DAsObservable()
+			.Where(collision => Data.IsGrounded == false && IsGroundCollision(collision) == true)
+			.Subscribe(_ =>
+			{
+				Data.IsGrounded = true;
+				Data.IsJumping = false;
+			})
+			.AddTo(this);
+	}
+	private IDisposable GroundCollisionExitSubscription()
+	{
+		return this
+			.OnCollisionExit2DAsObservable()
+			.Where(collision => Data.IsGrounded == true && IsGroundCollision(collision) == false)
+			.Subscribe(_ => Data.IsGrounded = false)
+			.AddTo(this);
 	}
 }

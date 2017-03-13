@@ -10,7 +10,7 @@ public class MovementControllerData : MonoBehaviour
 	[SerializeField]
 	private BoolReactiveProperty _isJumpingProperty = new BoolReactiveProperty(false);
 	[SerializeField] 
-	private MovementParameters _standardMovementParameters = new MovementParameters();
+	private MovementParameters _movementParameters = new MovementParameters();
 	[SerializeField]
 	private float _jumpHeight = 1f;
 	[SerializeField]
@@ -21,7 +21,7 @@ public class MovementControllerData : MonoBehaviour
 	public Vector3ReactiveProperty MovementVelocityProperty { get { return _movementVelocityProperty; } }
 	public BoolReactiveProperty IsGroundedProperty { get { return _isGroundedProperty; } }
 	public BoolReactiveProperty IsJumpingProperty { get { return _isJumpingProperty; } }
-	public MovementParameters StandardMovementParameters { get { return _standardMovementParameters; } }
+	public MovementParameters MovementParameters { get { return _movementParameters; } }
 	public float JumpHeight { get { return _jumpHeight; } }
 	public float GroundCheckRadius { get { return _groundCheckRadius; } }
 	public string GroundLayer { get { return _groundLayer; } }
@@ -39,10 +39,5 @@ public class MovementControllerData : MonoBehaviour
 	{
 		get { return _isJumpingProperty.Value; }
 		set { _isJumpingProperty.Value = value; }
-	}
-
-	private void Awake()
-	{
-
 	}
 }

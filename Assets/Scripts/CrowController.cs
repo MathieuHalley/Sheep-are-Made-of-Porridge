@@ -1,14 +1,15 @@
 ﻿using UnityEngine;
 using UniRx;
 using UniRx.Triggers;
+using System;
 
 public class CrowController : MonoBehaviour
 {
-	[SerializeField]
-	private CrowControllerData _crowControllerData;
 	private Rigidbody2D _rigidbody;
-
-	private CrowControllerData Data { get { return _crowControllerData; } }
+	[SerializeField]
+	private CrowControllerData _data;
+	private CrowControllerData Data { get { return _data; } }
+	private Vector2 CurPosition { get { return (Vector2)this.gameObject.transform.position; } }
 
 	private void Awake()
 	{
@@ -17,30 +18,48 @@ public class CrowController : MonoBehaviour
 
 	private void Start()
 	{
+		MoveTowardsNestSubscription();
+		MoveTowardsTargetSubscription();
+	}
+
+	public void SetNest(Vector2 nest)
+	{
+		Data.Nest = nest;
+	}
+
+	public void SetTarget(Vector2 target)
+	{
+		Data.Target = target;
+	}
+
+	private IDisposable MoveTowardsNestSubscription()
+	{
+		return
 		this.FixedUpdateAsObservable()
-			.Where(_ => Data.Target != (Vector2)this.gameObject.transform.position)
+			.Where(_ => Data.Target != CurPosition && Data.Target == Data.Nest)
 			.Select(_ => Data.Target)
-			.Subscribe(ProcessCrowMovement)
+			.Subscribe(_ => MoveTowards(Data.Nest))
 			.AddTo(this);
 	}
 
-	public void SetCrowTarget(Vector2 newTarget)
+	private IDisposable MoveTowardsTargetSubscription()
 	{
-		Data.Target = newTarget;
+		return
+		this.FixedUpdateAsObservable()
+			.Where(_ => Data.Target != CurPosition && Data.Target != Data.Nest)
+			.Select(_ => Data.Target)
+			.Subscribe(_ => MoveTowards(Data.Target))
+			.AddTo(this);
 	}
 
-	public void ProcessCrowMovement(Vector2 target)
+	private void MoveTowards(Vector2 target)
 	{
-		Vector2 movementVector = target - (Vector2)this.transform.position;
-		Vector2 movementForce = movementVector.normalized;
-		movementForce *= Mathf.Abs(Data.StandardMovementParameters.AccelerationForce);
-		_rigidbody.AddForce(movementForce, ForceMode2D.Force);
-		_rigidbody.velocity = Vector3.ClampMagnitude(_rigidbody.velocity, Mathf.Min(movementVector.magnitude,Data.StandardMovementParameters.MaxVelocity));
-		//_rigidbody.MovePosition(
-		//	Vector2.MoveTowards(
-		//		this.transform.position,
-		//		target,
-		//		Data.StandardMovementParameters.MaxVelocity * Time.deltaTime
-		//));
+		if ((target - CurPosition).magnitude > Data.MovementParameters.MaxVelocity)
+			target = new Vector2(target.x, Data.Nest.y);
+
+		_rigidbody.AddForce(target - CurPosition, ForceMode2D.Impulse);
+		_rigidbody.velocity = Vector2.ClampMagnitude(
+			_rigidbody.velocity, 
+			Data.MovementParameters.MaxVelocity);
 	}
 }
