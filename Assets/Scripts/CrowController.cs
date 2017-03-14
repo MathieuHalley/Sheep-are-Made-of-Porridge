@@ -1,27 +1,16 @@
 ﻿using UnityEngine;
 using UniRx;
 using UniRx.Triggers;
-using System;
 
-public class CrowController : MonoBehaviour
+public class CrowController : ReactiveController<CrowControllerData>
 {
-	private Rigidbody2D _rigidbody;
 	[SerializeField]
-	private CrowControllerData _data;
-	private CrowControllerData Data { get { return _data; } }
-	private Vector2 CurPosition { get { return (Vector2)this.gameObject.transform.position; } }
-
-	public float VelocityMagnitude;
-
-	private void Awake()
-	{
-		_rigidbody = GetComponent<Rigidbody2D>();
-	}
 
 	private void Start()
 	{
 		MoveTowardsNestSubscription();
 		MoveTowardsTargetSubscription();
+		DeactivateAtTargetSubscription();
 	}
 
 	public void SetNest(Vector2 nest)
@@ -32,34 +21,57 @@ public class CrowController : MonoBehaviour
 	public void SetTarget(Vector2 target)
 	{
 		Data.Target = target;
+		Data.IsActive = true;
 	}
 
-	private IDisposable MoveTowardsNestSubscription()
+	public void ReturnToNest()
+	{
+		Data.IsActive = false;
+	}
+
+	private System.IDisposable MoveTowardsNestSubscription()
 	{
 		return
 		this.FixedUpdateAsObservable()
-			.Where(_ => Data.Target != CurPosition && Data.Target == Data.Nest)
-			.Select(_ => Data.Target)
-			.Subscribe(_ => MoveTowards(Data.Nest))
+			.Where(_ => !Data.IsActive)
+			.Select(_ => Data.Nest)
+			.Subscribe(nest => MoveTowards(nest))
 			.AddTo(this);
 	}
 
-	private IDisposable MoveTowardsTargetSubscription()
+	private System.IDisposable MoveTowardsTargetSubscription()
 	{
 		return
 		this.FixedUpdateAsObservable()
-			.Where(_ => Data.Target != CurPosition && Data.Target != Data.Nest)
+			.Where(_ => Data.IsActive)
 			.Select(_ => Data.Target)
-			.Subscribe(_ => MoveTowards(Data.Target))
+			.Subscribe(target => MoveTowards(target))
 			.AddTo(this);
 	}
 
-	private void MoveTowards(Vector2 target)
+	private System.IDisposable DeactivateAtTargetSubscription()
 	{
-		MovementParameters movementParams = Data.MovementParameters;
-		float maxVelocity = movementParams.MaxVelocity;
-		Vector2 movementDistance = target - CurPosition;
-		movementDistance = Vector2.ClampMagnitude(movementDistance, maxVelocity * Time.fixedDeltaTime);
-		_rigidbody.MovePosition(movementDistance + CurPosition);
+		return
+		Data.IsActiveProperty.AsObservable()
+			.Where(isActive => isActive && Data.Target == CurPosition)
+			.Subscribe(_ => Data.IsActive = false)
+			.AddTo(this);
+	}
+
+	private void MoveTowards(Vector2 goal)
+	{	
+		float targetDistanceFromNest = (Data.Target - Data.Nest).magnitude;
+		float currentDistanceFromNest = (CurPosition - Data.Nest).magnitude;
+		float percTravelledFromNest = currentDistanceFromNest / targetDistanceFromNest;
+		float flightHeight = Vector2.Lerp(
+			Data.Target,
+			Data.Nest, 
+			Data.FlightHeight.Evaluate(percTravelledFromNest)).y;
+		float maxVelocity = Data.MovementParameters.MaxVelocity * Time.fixedDeltaTime;
+		Rigidbody.MovePosition(
+			Vector2.MoveTowards(
+				CurPosition, 
+				new Vector2(goal.x, flightHeight), 
+				maxVelocity));
 	}
 }

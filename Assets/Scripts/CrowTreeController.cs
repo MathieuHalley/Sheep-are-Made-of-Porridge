@@ -1,14 +1,9 @@
 ﻿using UnityEngine;
 using UniRx;
 using UniRx.Triggers;
-using System;
 
-public class CrowTreeController : MonoBehaviour
+public class CrowTreeController : ReactiveController<CrowTreeControllerData>
 {
-	[SerializeField]
-	private CrowTreeControllerData _data;
-	private CrowTreeControllerData Data { get { return _data; } }
-
 	private void Start()
 	{
 		SheepEnterRangeSubscription();
@@ -16,7 +11,7 @@ public class CrowTreeController : MonoBehaviour
 		SheepExitRangeSubscription();
 	}
 
-	private IDisposable SheepEnterRangeSubscription()
+	private System.IDisposable SheepEnterRangeSubscription()
 	{
 		return this.OnTriggerEnter2DAsObservable()
 			.Where(col => col.tag == "Player")
@@ -29,7 +24,7 @@ public class CrowTreeController : MonoBehaviour
 	}
 
 	//	When the sheep is out of range, return all of the crows to the nest
-	private IDisposable SheepExitRangeSubscription()
+	private System.IDisposable SheepExitRangeSubscription()
 	{
 		return this.OnTriggerExit2DAsObservable()
 			.Where(col => col.tag == "Player")
@@ -39,17 +34,18 @@ public class CrowTreeController : MonoBehaviour
 				foreach (GameObject crow in Data.CrowCollection)
 				{
 					crow.GetComponent<CrowController>()
-						.SetTarget(Data.Nest);
+						.ReturnToNest();
 				}
 			})
 			.AddTo(this);
 	}
 
-	private IDisposable	SheepInRangeSubscription()
+	private System.IDisposable SheepInRangeSubscription()
 	{
-		var sheepIsStillInRange = Observable
-			.Timer(TimeSpan.Zero, TimeSpan.FromSeconds(Data.CrowLaunchDelay))
-			.Where(_ => Data.IsSheepInRange == true)
+		var crowLaunchDelay = System.TimeSpan.FromSeconds(Data.CrowLaunchDelay);
+		var onSheepIsStillInRange = Observable
+			.Timer(System.TimeSpan.Zero, crowLaunchDelay)
+			.Where(_ => Data.IsSheepInRange)
 			.Select(_ => Unit.Default);
 
 		return this
@@ -60,12 +56,12 @@ public class CrowTreeController : MonoBehaviour
 				Data.IsSheepInRange = true;
 				Data.Sheep = collider.transform;
 			})
-			.Timestamp().Do(ts => Debug.Log("Enter Range!"))
+			.Timestamp().Do(_ => Debug.Log("Enter Range!"))
 			.Select(_ => Unit.Default)
-			.Merge(sheepIsStillInRange)
-			.Throttle(TimeSpan.FromSeconds(Data.CrowLaunchDelay))
-			.Where(_ => Data.IsSheepInRange == true)
-			.Timestamp().Do(ts => Debug.Log("Crow Launched!"))
+			.Merge(onSheepIsStillInRange)
+			.Throttle(crowLaunchDelay)
+			.Where(_ => Data.IsSheepInRange)
+			.Timestamp().Do(_ => Debug.Log("Crow Launched!"))
 			.Subscribe(_ =>
 			{
 				Data.CrowCollection
@@ -76,26 +72,6 @@ public class CrowTreeController : MonoBehaviour
 					.Enqueue(Data.CrowCollection.Dequeue());
 			})
 			.AddTo(this);
-
-		//	When the sheep is in range, send the crows after the sheep one by one.
-		//return
-		//Data.IsSheepInRangeProperty.AsObservable()
-		//	.Where(_ => Data.IsSheepInRange == true)
-		//	.Merge(Observable.Timer(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1))
-		//		.Where(_ => Data.IsSheepInRange == true)
-		//		.Select(_ => Data.IsSheepInRange)
-		//	)
-		//	.Throttle(TimeSpan.FromSeconds(1))
-		//	.Subscribe(_ =>
-		//	{
-		//		Data.CrowCollection
-		//			.Peek()
-		//			.GetComponent<CrowController>()
-		//			.SetTarget(Data.Sheep.position);
-		//		Data.CrowCollection
-		//			.Enqueue(Data.CrowCollection.Dequeue());
-		//	})
-		//	.AddTo(this);
 	}
 
 }

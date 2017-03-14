@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using UniRx;
 
-public class MovementControllerData : MonoBehaviour
+public class MovementControllerData : MonoBehaviour, IReactiveControllerData
 {
 	[SerializeField]
 	private Vector3ReactiveProperty _movementVelocityProperty = new Vector3ReactiveProperty(Vector3.zero);

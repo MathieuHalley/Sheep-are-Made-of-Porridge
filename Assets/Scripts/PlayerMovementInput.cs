@@ -21,7 +21,8 @@ public class PlayerMovementInput : MonoBehaviour
 
 	private System.IDisposable MovementInputSubscription()
 	{
-		return this.FixedUpdateAsObservable()
+		return 
+		this.FixedUpdateAsObservable()
 			.Select(_ => new Vector2(Input.GetAxis("Horizontal"), 0))
 			.Where(v => v.x != 0 || _rigidbody.velocity.x != 0)
 			.Subscribe(_movementController.ProcessMovementInput)
@@ -30,7 +31,8 @@ public class PlayerMovementInput : MonoBehaviour
 
 	private System.IDisposable JumpInputSubscription()
 	{
-		return this.FixedUpdateAsObservable()
+		return 
+		this.FixedUpdateAsObservable()
 			.Where(_ => Input.GetKey(KeyCode.Space))
 			.Subscribe(_movementController.ProcessJumpInput)
 			.AddTo(this);

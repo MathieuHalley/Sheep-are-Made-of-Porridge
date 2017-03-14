@@ -1,9 +1,8 @@
 ﻿using UnityEngine;
 using UniRx;
 using System.Collections.Generic;
-using System.Linq;
 
-public class CrowTreeControllerData : MonoBehaviour
+public class CrowTreeControllerData : MonoBehaviour, IReactiveControllerData
 {
 	[SerializeField]
 	private BoolReactiveProperty _isSheepInRangeProperty = new BoolReactiveProperty(false);
