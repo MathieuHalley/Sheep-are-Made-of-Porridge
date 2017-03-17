@@ -1,7 +1,8 @@
 ﻿using UnityEngine;
 using UniRx;
 
-public class PlayerModeControllerData : MonoBehaviour, IReactiveControllerData
+[System.Serializable]
+public class PlayerModeControllerData : ReactiveControllerData
 {
 	[SerializeField]
 	private BoolReactiveProperty _isPorridge = new BoolReactiveProperty(false);

@@ -2,10 +2,9 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public interface IReactiveControllerData { }
 
 public class ReactiveController<T> : MonoBehaviour 
-	where T : IReactiveControllerData
+	where T : ReactiveControllerData
 {
 	[SerializeField]
 	private T _data;

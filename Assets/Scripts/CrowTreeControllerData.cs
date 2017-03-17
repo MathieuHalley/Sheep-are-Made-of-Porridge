@@ -2,7 +2,8 @@
 using UniRx;
 using System.Collections.Generic;
 
-public class CrowTreeControllerData : MonoBehaviour, IReactiveControllerData
+[System.Serializable]
+public class CrowTreeControllerData : ReactiveControllerData
 {
 	[SerializeField]
 	private BoolReactiveProperty _isSheepInRangeProperty = new BoolReactiveProperty(false);
@@ -11,7 +12,7 @@ public class CrowTreeControllerData : MonoBehaviour, IReactiveControllerData
 	[SerializeField]
 	private Transform _sheep;
 	[SerializeField]
-	private Vector2 _nest;
+	private Vector2 _nestPosition;
 	[SerializeField]
 	private int _crowCount = 3;
 	[SerializeField]
@@ -22,7 +23,9 @@ public class CrowTreeControllerData : MonoBehaviour, IReactiveControllerData
 
 	public float CrowLaunchDelay { get { return _crowLaunchDelay; } }
 	public Queue<GameObject> CrowCollection { get { return _crowCollection; } }
-	public Vector2 Nest { get { return _nest; } }
+	public Vector2 NestPosition { get { return _nestPosition; } }
+	public GameObject CrowPrefab { get { return _crowPrefab; } }
+	public int CrowCount { get { return _crowCount; } }
 	public bool IsSheepInRange
 	{
 		get { return _isSheepInRangeProperty.Value; }
@@ -32,23 +35,5 @@ public class CrowTreeControllerData : MonoBehaviour, IReactiveControllerData
 	{
 		get { return _sheep; }
 		set { _sheep = value; }
-	}
-
-	private void Awake()
-	{
-		if (_nest == Vector2.zero)
-			_nest = (Vector2)this.transform.position + Vector2.up;
-		for (int i = 0; i < _crowCount; i++)
-		{
-			GameObject newCrow = Instantiate<GameObject>(
-				_crowPrefab,
-				this.gameObject.transform.position,
-				Quaternion.identity,
-				this.transform);
-			newCrow
-				.GetComponent<CrowController>()
-				.SetNest(_nest);
-			_crowCollection.Enqueue(newCrow);
-		}
 	}
 }
