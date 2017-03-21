@@ -7,12 +7,16 @@ public class CrowTreeController : ReactiveController<CrowTreeControllerData>
 	private void Awake()
 	{
 		if (Data.NestPosition == Vector2.zero)
-			Data.NestPosition.Set(this.transform.position.x + Data.NestPosition.x, this.transform.position.y + Data.NestPosition.y);
+		{
+			Data.NestPosition.Set(
+				this.transform.position.x + Data.NestPosition.x, 
+				this.transform.position.y + Data.NestPosition.y);
+		}
 		for (int i = 0; i < Data.CrowCount; i++)
 		{
 			GameObject newCrow = Instantiate<GameObject>(
 				Data.CrowPrefab,
-				this.gameObject.transform.position,
+				Data.NestPosition,
 				Quaternion.identity,
 				this.transform);
 			newCrow
@@ -74,18 +78,18 @@ public class CrowTreeController : ReactiveController<CrowTreeControllerData>
 				Data.IsSheepInRange = true;
 				Data.Sheep = collider.transform;
 			})
-			.Timestamp().Do(_ => Debug.Log("Enter Range!"))
+			.Do(_ => Debug.Log("Enter Range!"))
 			.Select(_ => Unit.Default)
 			.Merge(onSheepIsStillInRange)
 			.Throttle(crowLaunchDelay)
 			.Where(_ => Data.IsSheepInRange)
-			.Timestamp().Do(_ => Debug.Log("Crow Launched!"))
+			.Do(_ => Debug.Log("Crow Launched!"))
 			.Subscribe(_ =>
 			{
 				Data.CrowCollection
 					.Peek()
 					.GetComponent<CrowController>()
-					.SetTarget(Data.Sheep.position);
+					.SetTargetPosition(Data.Sheep.position);
 				Data.CrowCollection
 					.Enqueue(Data.CrowCollection.Dequeue());
 			})

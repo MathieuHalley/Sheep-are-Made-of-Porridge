@@ -14,16 +14,15 @@ public class MovementController : ReactiveController<MovementControllerData>
 	{
 		Vector2 movementForce = Vector2.right;
 		float maxVelocity = Data.MovementParameters.MaxVelocity;
-		float clampedVelocityX;
 
 		movementForce *= movementInput.x != 0
 			? Mathf.Abs(Data.MovementParameters.AccelerationForce) * movementInput.x
 			:-Mathf.Abs(Data.MovementParameters.DecelerationForce) * Rigidbody.velocity.x / maxVelocity;
 		Rigidbody.AddForce(movementForce, ForceMode2D.Impulse);
-		clampedVelocityX = Mathf.Clamp(Rigidbody.velocity.x, -maxVelocity, maxVelocity);
-		Rigidbody.velocity = new Vector2(clampedVelocityX, Rigidbody.velocity.y);
+		Rigidbody.velocity = new Vector2(
+			Mathf.Clamp(Rigidbody.velocity.x, -maxVelocity, maxVelocity), 
+			Rigidbody.velocity.y);
 
-		Data.MovementVelocity = Rigidbody.velocity;
 	}
 
 	public void ProcessJumpInput(Unit _)
@@ -36,7 +35,6 @@ public class MovementController : ReactiveController<MovementControllerData>
 
 		Data.IsJumping = true;
 		Data.IsGrounded = false;
-		Data.MovementVelocity = Rigidbody.velocity;
 	}
 
 	private bool IsGroundCollision(Collision2D collision)

@@ -7,9 +7,10 @@ public class CrowController : ReactiveController<CrowControllerData>
 {
 	private void Start()
 	{
-//		MoveTowardsNestSubscription();
-//		MoveTowardsTargetSubscription();
-//		DeactivateAtTargetSubscription();
+		BuildFlightPathToNestSubscription();
+		BuildFlightPathToTargetSubscription();
+		FollowFlightCurveSubscription();
+		ReturnToNestTriggerSubscription();
 	}
 
 	public void SetNest(Vector2 nest)
@@ -17,14 +18,10 @@ public class CrowController : ReactiveController<CrowControllerData>
 		Data.NestPosition = nest;
 	}
 
-	public void SetTarget(Vector2 target)
+	public void SetTargetPosition(Vector2 target)
 	{
-		Data.Target = target;
+		Data.TargetPosition = target;
 		Data.IsActive = true;
-		Data.FlightPath = new List<Vector3>();
-		Data.FlightPath.AddRange(BuildFlightPath(Data.OutwardFlightCurve, Data.NestPosition, target));
-		Data.FlightPath.AddRange(BuildFlightPath(Data.HomewardFlightCurve, target, Data.NestPosition));
-		DrawFlightPath(Data.FlightPath, Data.NestPosition, target);
 	}
 
 	public void ReturnToNest()
@@ -32,104 +29,54 @@ public class CrowController : ReactiveController<CrowControllerData>
 		Data.IsActive = false;
 	}
 
-	private System.IDisposable MoveTowardsNestSubscription()
+	private System.IDisposable ReturnToNestTriggerSubscription()
 	{
 		return
-		this.FixedUpdateAsObservable()
-			.Where(_ => !Data.IsActive)
-			.Select(_ => Data.NestPosition)
-			.Subscribe(nest => MoveTowards(Data.HomewardFlightCurve, CurPosition, Data.NestPosition))
-			.AddTo(this);
-	}
-
-	private System.IDisposable MoveTowardsTargetSubscription()
-	{
-		return
-		this.FixedUpdateAsObservable()
-			.Where(_ => Data.IsActive)
-			.Select(_ => Data.Target)
-			.Subscribe(target => MoveTowards(Data.OutwardFlightCurve, Data.NestPosition, target))
-			.AddTo(this);
-	}
-
-	private System.IDisposable DeactivateAtTargetSubscription()
-	{
-		return
-		Data.IsActiveProperty.AsObservable()
-			.Where(isActive => isActive && Data.Target == CurPosition)
+		this.OnTriggerEnter2DAsObservable()
+			.Where(col => col.tag == "Player" || (Vector2)CurPosition == Data.TargetPosition)
 			.Subscribe(_ => Data.IsActive = false)
 			.AddTo(this);
 	}
-
-	private void MoveTowards(AnimationCurve flightPath, Vector2 pathStart, Vector2 pathEnd)
-	{	
-
+	private System.IDisposable BuildFlightPathToNestSubscription()
+	{
+		return
+		Data.IsActiveProperty.AsObservable()
+			.DistinctUntilChanged()
+			.Where(_ => !Data.IsActive)
+			.Do(_ => Debug.Log("Build flightpath to nest!"))
+			.Subscribe(_ => Data.Flight = new FlightCurve(Data.HomewardFlight, CurPosition, Data.NestPosition))
+			.AddTo(this);
 	}
 
-	private List<Vector3> BuildFlightPath(AnimationCurve flightPath, Vector2 pathStart, Vector2 pathEnd)
+	private System.IDisposable BuildFlightPathToTargetSubscription()
 	{
-		List<Vector3> tempFlightPath = new List<Vector3>();
-		Vector2 pathEndOffset = pathEnd - pathStart;
-		Vector2 pathEndDirection = new Vector2(Mathf.Sign(pathEndOffset.x), Mathf.Sign(pathEndOffset.y));
-		float minPathElevation = Mathf.Min(pathEnd.y, pathStart.y);
-		foreach (Keyframe key in flightPath.keys)
-		{
-			tempFlightPath.Add(
-				new Vector2(
-					pathStart.x + key.time * pathEndOffset.x,
-					(pathEndDirection.y == -1f)
-						? Mathf.Min(pathEnd.y, pathStart.y) + key.value * -pathEndOffset.y
-						: Mathf.Max(pathEnd.y, pathStart.y) - key.value * pathEndOffset.y));
-		}
-
-		for (int i = 1; i < tempFlightPath.Count; ++i)
-		{
-			int h = i - 1;
-			float distance = Vector2.Distance(tempFlightPath[i], tempFlightPath[h]);
-			if (Vector2.Distance(tempFlightPath[i], tempFlightPath[h]) == 0)
-			{
-				tempFlightPath.RemoveAt(i);
-				--i;
-				continue;
-			}
-			if (Vector2.Distance(tempFlightPath[i], tempFlightPath[h]) > Data.MovementParameters.MaxVelocity * Time.fixedDeltaTime)
-			{
-				int numberOfMidpoints = Mathf.CeilToInt(distance / (Data.MovementParameters.MaxVelocity * Time.fixedDeltaTime * 15));
-				float distanceBetweenMidpoints = distance / numberOfMidpoints;
-				Vector3[] midpoints = new Vector3[numberOfMidpoints];
-				for (int j = 0; j < numberOfMidpoints; ++j)
-				{
-					midpoints[j] = 
-						Vector2.MoveTowards(
-							tempFlightPath[h], 
-							tempFlightPath[i], 
-							distanceBetweenMidpoints);
-					float distanceAlongPath = Mathf.InverseLerp(pathStart.x, pathEnd.x, midpoints[j].x);
-					midpoints[j].y =
-						(pathEndDirection.y == -1f)
-						? Mathf.Min(pathEnd.y, pathStart.y) + flightPath.Evaluate(distanceAlongPath) * -pathEndOffset.y
-						: Mathf.Max(pathEnd.y, pathStart.y) - flightPath.Evaluate(distanceAlongPath) * pathEndOffset.y;
-					tempFlightPath.Insert(i, midpoints[j]);
-					i++;
-					h = i - 1;
-				}
-			}
-		}
-		return new List<Vector3>(tempFlightPath);
+		return
+		Data.TargetPositionProperty.AsObservable()
+			.DistinctUntilChanged()
+			.Where(_ => Data.IsActive && (Vector2)CurPosition != Data.TargetPosition)
+			.Do(_ => Debug.Log("Build flightpath to target!"))
+			.Subscribe(_ => Data.Flight = new FlightCurve(Data.OutwardFlight, CurPosition, Data.TargetPosition))
+			.AddTo(this);
 	}
-	private void DrawFlightPath(List<Vector3> flightPath, Vector2 pathStart, Vector2 pathEnd)
+
+	private System.IDisposable FollowFlightCurveSubscription()
 	{
-		string pathCoordinates = "";
-		Vector2 pathEndOffset = pathEnd - pathStart;
-		Vector2 pathEndDirection = new Vector2(Mathf.Sign(pathEndOffset.x), Mathf.Sign(pathEndOffset.y));
-		for (int i = 1; i < Data.FlightPath.Count; ++i)
-		{
-			Debug.DrawLine(Data.FlightPath[i - 1], Data.FlightPath[i], Color.red, 1f);
-			Debug.DrawLine(Data.FlightPath[i - 1] + Vector3.up * 0.05f, Data.FlightPath[i - 1] + Vector3.down * 0.05f, Color.green, 1f);
-			Debug.DrawLine(Data.FlightPath[i - 1] + Vector3.left * 0.05f, Data.FlightPath[i - 1] + Vector3.right * 0.05f, Color.green, 1f);
-			pathCoordinates += (Vector2)Data.FlightPath[i - 1] + ", ";
-		}
-//		Debug.Log("Path Coordinates: " + pathCoordinates);
-//		Debug.Log("Path End direction: " + pathEndDirection);
+		return
+		this.FixedUpdateAsObservable()
+			.Where(_ => Data.IsActive || (Vector2)CurPosition != Data.NestPosition )
+			.Subscribe(_ =>
+			{
+				Vector2 direction = (Data.Flight.End - CurPosition).normalized;
+				float maxDistance = Data.MovementParameters.MaxVelocity * Time.fixedDeltaTime;
+				Vector2 newPosition = Data.Flight.Evaluate(CurPosition + direction * maxDistance);
+				Rigidbody.MovePosition(newPosition);
+//				Rigidbody.AddForce(newPosition - CurPosition, ForceMode2D.Impulse);
+//				Rigidbody.velocity = Vector2.ClampMagnitude(Rigidbody.velocity, Data.MovementParameters.MaxVelocity);
+				Debug.DrawRay(CurPosition, direction);
+				Debug.DrawLine(CurPosition, newPosition);
+				Debug.DrawLine(Data.Flight.Start, Data.Flight.End);
+				Data.Flight.DrawCurve();
+			})
+			.AddTo(this);
 	}
 }
