@@ -25,7 +25,7 @@ public class MovementController : ReactiveController<MovementControllerData>
 
 	}
 
-	public void ProcessJumpInput(Unit _)
+	public void ProcessJumpInput()
 	{
 		if (!Data.IsGrounded)
 			return;

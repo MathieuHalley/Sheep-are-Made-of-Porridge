@@ -43,7 +43,6 @@ public class FlightCurve
 			return _start;
 		if (Mathf.Approximately(progress, 1))
 			return _end;
-		//		float positionHeight = _curve.Evaluate(progress) + _directCurve.Evaluate(progress);
 		float positionHeight = _curve.Evaluate(progress);
 		return new Vector2(position.x, positionHeight);
 	}

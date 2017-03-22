@@ -17,12 +17,11 @@ public class CrowTreeControllerData : ReactiveControllerData
 	private int _crowCount = 3;
 	[SerializeField]
 	private float _crowLaunchDelay = 0.5f;
-	private Queue<GameObject> _crowCollection = new Queue<GameObject>(3);
+	private Queue<CrowController> _crowCollection = new Queue<CrowController>(3);
 
 	public BoolReactiveProperty IsSheepInRangeProperty { get { return _isSheepInRangeProperty; } }
-
 	public float CrowLaunchDelay { get { return _crowLaunchDelay; } }
-	public Queue<GameObject> CrowCollection { get { return _crowCollection; } }
+	public Queue<CrowController> CrowCollection { get { return _crowCollection; } }
 	public Vector2 NestPosition { get { return _nestPosition; } }
 	public GameObject CrowPrefab { get { return _crowPrefab; } }
 	public int CrowCount { get { return _crowCount; } }

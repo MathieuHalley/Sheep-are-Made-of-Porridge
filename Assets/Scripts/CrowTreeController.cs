@@ -14,15 +14,17 @@ public class CrowTreeController : ReactiveController<CrowTreeControllerData>
 		}
 		for (int i = 0; i < Data.CrowCount; i++)
 		{
-			GameObject newCrow = Instantiate<GameObject>(
-				Data.CrowPrefab,
-				Data.NestPosition,
-				Quaternion.identity,
-				this.transform);
-			newCrow
-				.GetComponent<CrowController>()
-				.SetNest(CurPosition + Data.NestPosition);
-			Data.CrowCollection.Enqueue(newCrow);
+			GameObject crow = 
+				Instantiate<GameObject>(
+					Data.CrowPrefab,
+					Data.NestPosition,
+					Quaternion.identity,
+					this.transform);
+			CrowController crowController =
+				crow.GetComponent<CrowController>()
+					.SetNestPosition(CurPosition + Data.NestPosition)
+					.DefineSheep(Data.Sheep);
+			Data.CrowCollection.Enqueue(crowController);
 		}
 	}
 
@@ -53,11 +55,8 @@ public class CrowTreeController : ReactiveController<CrowTreeControllerData>
 			.Subscribe(_ =>
 			{
 				Data.IsSheepInRange = false;
-				foreach (GameObject crow in Data.CrowCollection)
-				{
-					crow.GetComponent<CrowController>()
-						.ReturnToNest();
-				}
+				foreach (CrowController crow in Data.CrowCollection)
+					crow.FlyToNest();
 			})
 			.AddTo(this);
 	}
@@ -86,14 +85,9 @@ public class CrowTreeController : ReactiveController<CrowTreeControllerData>
 			.Do(_ => Debug.Log("Crow Launched!"))
 			.Subscribe(_ =>
 			{
-				Data.CrowCollection
-					.Peek()
-					.GetComponent<CrowController>()
-					.SetTargetPosition(Data.Sheep.position);
-				Data.CrowCollection
-					.Enqueue(Data.CrowCollection.Dequeue());
+				Data.CrowCollection.Peek().FlyToSheep();
+				Data.CrowCollection.Enqueue(Data.CrowCollection.Dequeue());
 			})
 			.AddTo(this);
 	}
-
 }

@@ -7,55 +7,52 @@ public class CrowController : ReactiveController<CrowControllerData>
 {
 	private void Start()
 	{
-		BuildFlightPathToNestSubscription();
-		BuildFlightPathToTargetSubscription();
-		FollowFlightCurveSubscription();
 		ReturnToNestTriggerSubscription();
+		FollowFlightCurveSubscription();
 	}
 
-	public void SetNest(Vector2 nest)
+	public CrowController SetNestPosition(Vector2 nest)
 	{
 		Data.NestPosition = nest;
+		return this;
 	}
 
-	public void SetTargetPosition(Vector2 target)
+	public CrowController DefineSheep(Transform sheep)
 	{
-		Data.TargetPosition = target;
-		Data.IsActive = true;
+		Data.Sheep = sheep;
+		return this;
 	}
 
-	public void ReturnToNest()
+	public CrowController FlyToNest()
 	{
-		Data.IsActive = false;
+		if (Data.Flight.End != Data.NestPosition)
+		{
+			Rigidbody.velocity = new Vector2(Rigidbody.velocity.x, 1);
+			Data.Flight = new FlightCurve(Data.HomewardFlight, CurPosition, Data.NestPosition);
+		}
+		return this;
+	}
+
+	public CrowController FlyToSheep()
+	{
+		Debug.DrawLine(Data.SheepBounds.min, new Vector2(Data.SheepBounds.min.x, Data.SheepBounds.max.y), Color.yellow);
+		Debug.DrawLine(Data.SheepBounds.min, new Vector2(Data.SheepBounds.max.x, Data.SheepBounds.min.y), Color.yellow);
+		Debug.DrawLine(Data.SheepBounds.max, new Vector2(Data.SheepBounds.min.x, Data.SheepBounds.max.y), Color.yellow);
+		Debug.DrawLine(Data.SheepBounds.max, new Vector2(Data.SheepBounds.max.x, Data.SheepBounds.min.y), Color.yellow);
+		if (Data.Flight.End != (Vector2)Data.Sheep.position && !Data.SheepBounds.Contains(CurPosition))
+		{
+//			Rigidbody.velocity = new Vector2(Rigidbody.velocity.x, 1);
+			Data.Flight = new FlightCurve(Data.OutwardFlight, CurPosition, Data.Sheep.position);
+		}
+		return this;
 	}
 
 	private System.IDisposable ReturnToNestTriggerSubscription()
 	{
 		return
 		this.OnTriggerEnter2DAsObservable()
-			.Where(col => col.tag == "Player" || (Vector2)CurPosition == Data.TargetPosition)
-			.Subscribe(_ => Data.IsActive = false)
-			.AddTo(this);
-	}
-	private System.IDisposable BuildFlightPathToNestSubscription()
-	{
-		return
-		Data.IsActiveProperty.AsObservable()
-			.DistinctUntilChanged()
-			.Where(_ => !Data.IsActive)
-			.Do(_ => Debug.Log("Build flightpath to nest!"))
-			.Subscribe(_ => Data.Flight = new FlightCurve(Data.HomewardFlight, CurPosition, Data.NestPosition))
-			.AddTo(this);
-	}
-
-	private System.IDisposable BuildFlightPathToTargetSubscription()
-	{
-		return
-		Data.TargetPositionProperty.AsObservable()
-			.DistinctUntilChanged()
-			.Where(_ => Data.IsActive && (Vector2)CurPosition != Data.TargetPosition)
-			.Do(_ => Debug.Log("Build flightpath to target!"))
-			.Subscribe(_ => Data.Flight = new FlightCurve(Data.OutwardFlight, CurPosition, Data.TargetPosition))
+			.Where(col => col.tag == "Player" || ((Vector2)CurPosition == Data.Flight.End && Data.Flight.End != Data.NestPosition))
+			.Subscribe(_ => FlyToNest())
 			.AddTo(this);
 	}
 
@@ -63,15 +60,15 @@ public class CrowController : ReactiveController<CrowControllerData>
 	{
 		return
 		this.FixedUpdateAsObservable()
-			.Where(_ => Data.IsActive || (Vector2)CurPosition != Data.NestPosition )
+			.Where(_ => (Vector2)CurPosition != Data.Flight.End )
 			.Subscribe(_ =>
 			{
 				Vector2 direction = (Data.Flight.End - CurPosition).normalized;
 				float maxDistance = Data.MovementParameters.MaxVelocity * Time.fixedDeltaTime;
 				Vector2 newPosition = Data.Flight.Evaluate(CurPosition + direction * maxDistance);
-				Rigidbody.MovePosition(newPosition);
-//				Rigidbody.AddForce(newPosition - CurPosition, ForceMode2D.Impulse);
-//				Rigidbody.velocity = Vector2.ClampMagnitude(Rigidbody.velocity, Data.MovementParameters.MaxVelocity);
+//				Rigidbody.MovePosition(newPosition);
+				Rigidbody.AddForce(newPosition - CurPosition, ForceMode2D.Impulse);
+				Rigidbody.velocity = Vector2.ClampMagnitude(Rigidbody.velocity, Data.MovementParameters.MaxVelocity);
 				Debug.DrawRay(CurPosition, direction);
 				Debug.DrawLine(CurPosition, newPosition);
 				Debug.DrawLine(Data.Flight.Start, Data.Flight.End);

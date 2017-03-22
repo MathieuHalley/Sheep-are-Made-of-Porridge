@@ -25,7 +25,7 @@ public class PlayerMovementInput : MonoBehaviour
 		this.FixedUpdateAsObservable()
 			.Select(_ => new Vector2(Input.GetAxis("Horizontal"), 0))
 			.Where(v => v.x != 0 || _rigidbody.velocity.x != 0)
-			.Subscribe(_movementController.ProcessMovementInput)
+			.Subscribe(v => _movementController.ProcessMovementInput(v))
 			.AddTo(this);
 	}
 
@@ -34,7 +34,7 @@ public class PlayerMovementInput : MonoBehaviour
 		return 
 		this.FixedUpdateAsObservable()
 			.Where(_ => Input.GetKey(KeyCode.Space))
-			.Subscribe(_movementController.ProcessJumpInput)
+			.Subscribe(_ => _movementController.ProcessJumpInput())
 			.AddTo(this);
 	}
 }
