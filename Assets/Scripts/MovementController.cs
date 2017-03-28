@@ -4,6 +4,15 @@ using UniRx.Triggers;
 
 public class MovementController : ReactiveController<MovementControllerData>
 {
+	public ReactiveProperty<bool> IsGrounded { get; private set; }
+	public ReactiveProperty<bool> IsJumping { get; private set; }
+
+	private void Awake()
+	{
+		IsGrounded = new ReactiveProperty<bool>(false);
+		IsJumping = new ReactiveProperty<bool>(false);
+	}
+
 	private void Start()
 	{
 		GroundCollisionEnterSubscription();
@@ -22,19 +31,18 @@ public class MovementController : ReactiveController<MovementControllerData>
 		Rigidbody.velocity = new Vector2(
 			Mathf.Clamp(Rigidbody.velocity.x, -maxVelocity, maxVelocity), 
 			Rigidbody.velocity.y);
-
 	}
 
 	public void ProcessJumpInput()
 	{
-		if (!Data.IsGrounded)
+		if (!IsGrounded.Value)
 			return;
 		float jumpForce = Mathf.Sqrt(2f * Data.JumpHeight * -Physics2D.gravity.y * Rigidbody.gravityScale);
 
 		Rigidbody.AddForce(new Vector2(0, jumpForce), ForceMode2D.Impulse);
 
-		Data.IsJumping = true;
-		Data.IsGrounded = false;
+		IsJumping.Value = true;
+		IsGrounded.Value = false;
 	}
 
 	private bool IsGroundCollision(Collision2D collision)
@@ -55,11 +63,11 @@ public class MovementController : ReactiveController<MovementControllerData>
 	{
 		return this
 			.OnCollisionEnter2DAsObservable()
-			.Where(collision => !Data.IsGrounded && IsGroundCollision(collision))
+			.Where(collision => !IsGrounded.Value && IsGroundCollision(collision))
 			.Subscribe(_ =>
 			{
-				Data.IsGrounded = true;
-				Data.IsJumping = false;
+				IsGrounded.Value = true;
+				IsJumping.Value = false;
 			})
 			.AddTo(this);
 	}
@@ -67,8 +75,8 @@ public class MovementController : ReactiveController<MovementControllerData>
 	{
 		return this
 			.OnCollisionExit2DAsObservable()
-			.Where(collision => Data.IsGrounded && !IsGroundCollision(collision))
-			.Subscribe(_ => Data.IsGrounded = false)
+			.Where(collision => IsGrounded.Value && !IsGroundCollision(collision))
+			.Subscribe(_ => IsGrounded.Value = false)
 			.AddTo(this);
 	}
 }

@@ -1,92 +1,116 @@
 ﻿using UnityEngine;
 using UniRx;
 using UniRx.Triggers;
+using System.Collections.Generic;
+using System.Linq;
 
 public class CrowTreeController : ReactiveController<CrowTreeControllerData>
 {
+	public ReactiveProperty<bool> IsSheepInRange { get; private set; }
+
 	private void Awake()
 	{
-		if (Data.NestPosition == Vector2.zero)
-		{
-			Data.NestPosition.Set(
-				this.transform.position.x + Data.NestPosition.x, 
-				this.transform.position.y + Data.NestPosition.y);
-		}
+		IsSheepInRange = new ReactiveProperty<bool>(false);
+		Data.NestCollider = Data.Nest.GetComponent<Collider2D>();
+		Data.SheepCollider = Data.Sheep.GetComponent<Collider2D>();
 		for (int i = 0; i < Data.CrowCount; i++)
 		{
-			GameObject crow = 
-				Instantiate<GameObject>(
-					Data.CrowPrefab,
-					Data.NestPosition,
-					Quaternion.identity,
-					this.transform);
-			CrowController crowController =
-				crow.GetComponent<CrowController>()
-					.SetNestPosition(CurPosition + Data.NestPosition)
-					.DefineSheep(Data.Sheep);
-			Data.CrowCollection.Enqueue(crowController);
+			GameObject crow = Instantiate<GameObject>(
+				Data.CrowPrefab,
+				Data.Nest.transform.position,
+				Quaternion.identity,
+				this.transform);
+			Data.CrowCollection.Add(crow.GetComponent<CrowController>());
 		}
 	}
 
 	private void Start()
 	{
-		SheepEnterRangeSubscription();
-		SheepInRangeSubscription();
-		SheepExitRangeSubscription();
+		SheepInsideRangeSubscription();
+		SheepOutsideRangeSubscription();
+		foreach (CrowController crow in Data.CrowCollection)
+		{
+			CrowIsActiveUpdateSubscription(crow);
+		}
 	}
 
-	private System.IDisposable SheepEnterRangeSubscription()
+	private System.IDisposable CrowIsActiveUpdateSubscription(CrowController crow)
 	{
-		return this.OnTriggerEnter2DAsObservable()
-			.Where(col => col.tag == "Player")
-			.Subscribe(col =>
+		return
+			crow.IsFlightActiveProperty
+			.DistinctUntilChanged()
+			.Subscribe(isActive =>
 			{
-				Data.IsSheepInRange = true;
-				Data.Sheep = col.transform;
+				if (isActive)
+				{
+					Data.ActiveCrowCollection.Add(crow);
+				}
+				else
+				{
+					Data.ActiveCrowCollection.Remove(crow);
+				}
 			})
 			.AddTo(this);
 	}
 
-	//	When the sheep is out of range, return all of the crows to the nest
-	private System.IDisposable SheepExitRangeSubscription()
+	private System.IDisposable SheepInsideRangeSubscription()
 	{
-		return this.OnTriggerExit2DAsObservable()
-			.Where(col => col.tag == "Player")
-			.Subscribe(_ =>
-			{
-				Data.IsSheepInRange = false;
-				foreach (CrowController crow in Data.CrowCollection)
-					crow.FlyToNest();
-			})
-			.AddTo(this);
-	}
-
-	private System.IDisposable SheepInRangeSubscription()
-	{
-		var crowLaunchDelay = System.TimeSpan.FromSeconds(Data.CrowLaunchDelay);
-		var onSheepIsStillInRange = Observable
-			.Timer(System.TimeSpan.Zero, crowLaunchDelay)
-			.Where(_ => Data.IsSheepInRange)
-			.Select(_ => Unit.Default);
-
-		return this
-			.OnTriggerEnter2DAsObservable()
+		int currentCrow = 0;
+		return
+		this.OnTriggerEnter2DAsObservable()
 			.Where(collider => collider.tag == "Player")
-			.Do(collider =>
+			.Do(col => 
 			{
-				Data.IsSheepInRange = true;
-				Data.Sheep = collider.transform;
+				Debug.Log("Sheep Enter Range!");
+				IsSheepInRange.Value = true;
+				Data.Sheep = col.gameObject;
 			})
-			.Do(_ => Debug.Log("Enter Range!"))
-			.Select(_ => Unit.Default)
-			.Merge(onSheepIsStillInRange)
-			.Throttle(crowLaunchDelay)
-			.Where(_ => Data.IsSheepInRange)
-			.Do(_ => Debug.Log("Crow Launched!"))
-			.Subscribe(_ =>
+			.Select(_ => new Unit())
+			.Merge(Observable
+				.Timer(System.TimeSpan.Zero, Data.CrowUpdateDelta)
+				.Select(_ => new Unit()))
+			.Where(_ => IsSheepInRange.Value == true)
+			.Select(crows => Data.CrowCollection[currentCrow])
+			.Subscribe(crow =>
 			{
-				Data.CrowCollection.Peek().FlyToSheep();
-				Data.CrowCollection.Enqueue(Data.CrowCollection.Dequeue());
+				crow.SetFlightPath(
+					crow.transform.position,
+					Data.SheepCollider.bounds.center);
+				crow.EnqueueFlightPath(
+					Data.SheepCollider.bounds.center,
+					Data.NestCollider.bounds.center);
+				Debug.Log("SheepLaunch");
+				currentCrow++;
+				currentCrow %= Data.CrowCollection.Count;
+			})
+			.AddTo(this);
+	}
+	
+	//	When the sheep is out of range, return all of the crows to the nest
+	private System.IDisposable SheepOutsideRangeSubscription()
+	{
+		return
+		this.OnTriggerExit2DAsObservable()
+			.Where(collider => collider.tag == "Player")
+			.Do(_ =>
+			{
+				Debug.Log("Sheep Exit Range!");
+				IsSheepInRange.Value = false;
+			})
+			.Select(_ => new Unit())
+			.Merge(Observable
+				.Timer(System.TimeSpan.Zero, Data.CrowUpdateDelta)
+				.Select(_ => new Unit()))
+			.Where(_ => IsSheepInRange.Value == false)
+			.Subscribe(crows =>
+			{
+				foreach (CrowController crow in Data.CrowCollection)
+				{
+					if (crow.CurrentFlightProgress < 0.99f || crow.CurrentFlightLength > 0.01f)
+					{
+						crow.SetFlightPath(crow.transform.position, Data.NestCollider.bounds.center);
+					}
+				}
 			})
 			.AddTo(this);
 	}

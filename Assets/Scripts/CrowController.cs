@@ -5,75 +5,106 @@ using System.Collections.Generic;
 
 public class CrowController : ReactiveController<CrowControllerData>
 {
+	public ReactiveProperty<bool> IsFlightActiveProperty { get; private set; }
+	public bool IsFlightActive
+	{
+		get { return IsFlightActiveProperty.Value; }
+		set { IsFlightActiveProperty.Value = value; }
+	}
+	public float CurrentFlightProgress
+	{
+		get
+		{
+			return (Data.FlightSchedule.Count > 0) 
+				? Data.CurrentFlight.Progress(CurPosition) 
+				: (CurPosition == Data.FlightTarget.target ? 1f : 0f);
+		}
+	}
+	public float CurrentFlightLength
+	{
+		get
+		{
+			return Data.FlightSchedule.Count > 0 
+				? Data.CurrentFlight.Length 
+				: (CurPosition - Data.FlightTarget.target).magnitude; }
+	}
+
+	private void Awake()
+	{
+		IsFlightActiveProperty = new ReactiveProperty<bool>(false);
+		Data.FlightSchedule = new Queue<FlightPath>();
+		Data.FlightTarget = this.gameObject.GetComponent<TargetJoint2D>();
+		if (Data.FlightTarget == null)
+		{
+			Data.FlightTarget = this.gameObject.AddComponent<TargetJoint2D>();
+		}
+		Data.FlightTarget.maxForce = Data.MaxVelocity;
+	}
+
 	private void Start()
 	{
-		ReturnToNestTriggerSubscription();
-		FollowFlightCurveSubscription();
+		FollowFlightPathSubscription();
 	}
-
-	public CrowController SetNestPosition(Vector2 nest)
+	
+	public void EnqueueFlightPath(Vector2 start, Vector2 target)
 	{
-		Data.NestPosition = nest;
-		return this;
+		Data.FlightSchedule.Enqueue(new FlightPath(start, target));
+		Data.FlightTarget.target = Data.CurrentFlight.Target;
+		SetIsFlightActive(true);
 	}
 
-	public CrowController DefineSheep(Transform sheep)
+	public void SetFlightPath(Vector2 start, Vector2 target)
 	{
-		Data.Sheep = sheep;
-		return this;
+		Data.FlightSchedule.Clear();
+		Data.FlightSchedule.Enqueue(new FlightPath(start, target));
+		Data.FlightTarget.target = Data.CurrentFlight.Target;
+		SetIsFlightActive(true);
 	}
 
-	public CrowController FlyToNest()
+	public void ClearFlights()
 	{
-		if (Data.Flight.End != Data.NestPosition)
-		{
-			Rigidbody.velocity = new Vector2(Rigidbody.velocity.x, 1);
-			Data.Flight = new FlightCurve(Data.HomewardFlight, CurPosition, Data.NestPosition);
-		}
-		return this;
+		Data.FlightSchedule.Clear();
+		SetIsFlightActive(false);
 	}
 
-	public CrowController FlyToSheep()
+	private void SetIsFlightActive(bool isFlightActive)
 	{
-		Debug.DrawLine(Data.SheepBounds.min, new Vector2(Data.SheepBounds.min.x, Data.SheepBounds.max.y), Color.yellow);
-		Debug.DrawLine(Data.SheepBounds.min, new Vector2(Data.SheepBounds.max.x, Data.SheepBounds.min.y), Color.yellow);
-		Debug.DrawLine(Data.SheepBounds.max, new Vector2(Data.SheepBounds.min.x, Data.SheepBounds.max.y), Color.yellow);
-		Debug.DrawLine(Data.SheepBounds.max, new Vector2(Data.SheepBounds.max.x, Data.SheepBounds.min.y), Color.yellow);
-		if (Data.Flight.End != (Vector2)Data.Sheep.position && !Data.SheepBounds.Contains(CurPosition))
-		{
-//			Rigidbody.velocity = new Vector2(Rigidbody.velocity.x, 1);
-			Data.Flight = new FlightCurve(Data.OutwardFlight, CurPosition, Data.Sheep.position);
-		}
-		return this;
+		IsFlightActive = isFlightActive;
+		Data.FlightTarget.enabled = isFlightActive;
 	}
 
-	private System.IDisposable ReturnToNestTriggerSubscription()
-	{
-		return
-		this.OnTriggerEnter2DAsObservable()
-			.Where(col => col.tag == "Player" || ((Vector2)CurPosition == Data.Flight.End && Data.Flight.End != Data.NestPosition))
-			.Subscribe(_ => FlyToNest())
-			.AddTo(this);
-	}
-
-	private System.IDisposable FollowFlightCurveSubscription()
+	private System.IDisposable FollowFlightPathSubscription()
 	{
 		return
 		this.FixedUpdateAsObservable()
-			.Where(_ => (Vector2)CurPosition != Data.Flight.End )
+			.Where(_ => Data.FlightSchedule.Count > 0)
 			.Subscribe(_ =>
 			{
-				Vector2 direction = (Data.Flight.End - CurPosition).normalized;
-				float maxDistance = Data.MovementParameters.MaxVelocity * Time.fixedDeltaTime;
-				Vector2 newPosition = Data.Flight.Evaluate(CurPosition + direction * maxDistance);
-//				Rigidbody.MovePosition(newPosition);
-				Rigidbody.AddForce(newPosition - CurPosition, ForceMode2D.Impulse);
-				Rigidbody.velocity = Vector2.ClampMagnitude(Rigidbody.velocity, Data.MovementParameters.MaxVelocity);
-				Debug.DrawRay(CurPosition, direction);
-				Debug.DrawLine(CurPosition, newPosition);
-				Debug.DrawLine(Data.Flight.Start, Data.Flight.End);
-				Data.Flight.DrawCurve();
+				foreach(FlightPath flight in Data.FlightSchedule)
+				{
+					flight.DrawFlightPath();
+				}
+
+				if (Data.CurrentFlight.Progress(CurPosition) > 0.99f || CurrentFlightLength < 0.01f)
+				{
+					Data.FlightSchedule.Dequeue();
+					if (Data.FlightSchedule.Count == 0)
+					{
+						SetIsFlightActive(false);
+					}
+					else
+					{
+						Data.FlightTarget.target = Data.CurrentFlight.Target;
+					}
+				}
+				else
+				{
+					float pathOffset = Data.CurrentFlight.Evaluate(CurPosition).y - CurPosition.y;
+					Rigidbody.AddForce(Vector2.up * pathOffset, ForceMode2D.Force);
+					Rigidbody.velocity = Vector2.ClampMagnitude(Rigidbody.velocity, Data.MaxVelocity);
+				}
 			})
 			.AddTo(this);
 	}
+
 }
