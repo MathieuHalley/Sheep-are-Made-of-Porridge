@@ -26,7 +26,8 @@ public class CrowController : ReactiveController<CrowControllerData>
 		{
 			return Data.FlightSchedule.Count > 0 
 				? Data.CurrentFlight.Length 
-				: (CurPosition - Data.FlightTarget.target).magnitude; }
+				: (CurPosition - Data.FlightTarget.target).magnitude;
+		}
 	}
 
 	private void Awake()
