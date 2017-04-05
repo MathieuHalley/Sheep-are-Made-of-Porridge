@@ -1,27 +1,21 @@
-﻿using UnityEngine;
-using UnityEngine.SceneManagement;
-using System.Collections;
-using System;
+﻿using System;
+using UnityEngine;
 
-[Serializable]
-public class PlayState 
-	: GameState
+namespace Assets.Scripts.GameSceneManagement
 {
-	public override void Update()
+	[Serializable]
+	public class PlayState : GameState
 	{
-		GameObject[] rootGOs;
-		float hDir = Input.GetAxis("Horizontal");
-		for (var i = 0; i < scenes.Length; ++i)
+		public override void Update()
 		{
-			Scene scene = scenes[i].GetScene();
-			if (scene.isLoaded)
+			var hDir = Input.GetAxis("Horizontal");
+			for (var i = 0; i < Scenes.Length; ++i)
 			{
-				rootGOs = new GameObject[scene.rootCount];
-				rootGOs = scene.GetRootGameObjects();
-				foreach (var go in rootGOs)
+				var scene = Scenes[i].Scene;
+				if (!scene.isLoaded) continue;
+				foreach (var go in scene.GetRootGameObjects())
 				{
-					go.transform.Translate(
-						Vector2.right * hDir * (8 / (1 + i)) * Time.deltaTime);
+					go.transform.Translate(Vector2.right * hDir * (8f / (1 + i)) * Time.deltaTime);
 				}
 			}
 		}

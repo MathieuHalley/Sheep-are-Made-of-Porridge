@@ -1,100 +1,95 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
 using UniRx;
 using UniRx.Triggers;
-using System.Collections.Generic;
-using System.Linq;
+using UnityEngine;
 
-public class CrowTreeController : ReactiveController<CrowTreeControllerData>
+namespace Assets.Scripts
 {
-	private Vector2 NestPosition { get { return Data.NestCollider.bounds.center; } }
-	private Vector2 SheepPosition { get { return Data.SheepCollider.bounds.center; } }
-	private void Awake()
+	public class CrowTreeController : ReactiveController<CrowTreeControllerData>
 	{
-		Data.NestCollider = Data.Nest.GetComponent<Collider2D>();
-		Data.SheepCollider = Data.Sheep.GetComponent<Collider2D>();
-		for (int i = 0; i < Data.CrowCount; i++)
+		private void Awake()
 		{
-			GameObject crow = Instantiate<GameObject>(
-				Data.CrowPrefab,
-				Data.Nest.transform.position,
-				Quaternion.identity,
-				this.transform);
-			Data.CrowCollection.Add(crow.GetComponent<CrowController>());
+			for (var i = 0; i < Data.CrowCount; i++)
+			{
+				var crow = Instantiate(
+					Data.CrowPrefab,
+					Data.NestObject.transform.position,
+					Quaternion.identity,
+					transform);
+				Data.CrowCollection.Add(crow.GetComponent<CrowController>());
+			}
 		}
-	}
 
-	private void Start()
-	{
-		SheepEnterRangeSubscription();
-		SheepExitRangeSubscription();
-		CrowUpdateSubscription();
-	}
+		private void Start()
+		{
+			SheepEnterRangeSubscription();
+			SheepExitRangeSubscription();
+		}
 
-	public void SetChaseSheep(bool chaseSheep)
-	{
-		Data.ChaseSheep = chaseSheep;
-	}
+		private void OnEnable()
+		{
+			CrowFlightPathUpdateSubscription();
+		}
 
-	private System.IDisposable SheepEnterRangeSubscription()
-	{
-		return
-		this.OnTriggerEnter2DAsObservable()
-			.Where(collider => collider.tag == "Player")
-			.Subscribe(collider =>
-			{
-				Debug.Log("Sheep Enter Range!");
-				Data.ChaseSheep = true;
-				Data.Sheep = collider.gameObject;
-			})
-			.AddTo(this);
-	}
-
-	//	When the sheep is out of range, return all of the crows to the nest
-	private System.IDisposable SheepExitRangeSubscription()
-	{
-		return
-		this.OnTriggerExit2DAsObservable()
-			.Where(collider => collider.tag == "Player")
-			.Subscribe(collider =>
-			{
-				Debug.Log("Sheep Exit Range!");
-				Data.ChaseSheep = false;
-			})
-			.AddTo(this);
-	}
-
-	private System.IDisposable CrowUpdateSubscription()
-	{
-		int currentCrow = 0;
-		return
-		this.OnEnableAsObservable()
-			.Merge(CrowUpdateAsObservable())
-			.Select(crows => Data.CrowCollection[currentCrow])
-			.Subscribe(crow =>
-			{
-				if (Data.ChaseSheep == true)
+		private void SheepEnterRangeSubscription()
+		{
+			this.OnTriggerEnter2DAsObservable()
+				.Where(col => col.tag == "Player")
+				.Subscribe(col =>
 				{
-					crow.SetFlightPath(crow.transform.position, SheepPosition);
-					crow.EnqueueFlightPath(SheepPosition, NestPosition);
-				}
-				else
+					Debug.Log("Sheep Enter Range!");
+					Data.IsChasingSheep.Value = true;
+					Data.SheepObject = col.gameObject;
+				})
+				.AddTo(this);
+		}
+
+		//	When the sheep is out of range, return all of the crows to the nest
+		private void SheepExitRangeSubscription()
+		{
+			this.OnTriggerExit2DAsObservable()
+				.Where(col => col.tag == "Player")
+				.Subscribe(col =>
 				{
-					if (crow.CurrentFlightProgress < 0.99f || crow.CurrentFlightLength > 0.01f)
+					Debug.Log("Sheep Exit Range!");
+					Data.IsChasingSheep.Value = false;
+					Data.SheepObject = null;
+				})
+				.AddTo(this);
+		}
+
+		private void CrowFlightPathUpdateSubscription()
+		{
+			var currentCrow = 0;
+			this.OnEnableAsObservable()
+				.Merge(OnCrowLogicUpdateAsObservable())
+				.TakeUntilDisable(this)
+				.Select(crows => Data.CrowCollection[currentCrow])
+				.Subscribe(crow =>
+				{
+					var sheepTop = Data.SheepPosition + Data.SheepCollider.offset;
+					if (Data.IsChasingSheep.Value && Data.SheepController.IsPorridge)
 					{
-						crow.SetFlightPath(crow.transform.position, NestPosition);
+						Debug.Log("sheepTop " + sheepTop);
+						crow.SetFlightPath(crow.CurPosition, sheepTop, 30f);
+//						crow.EnqueueFlightPath(sheepTop, Data.NestPosition, 30f, -30f);
 					}
-				}
-				currentCrow++;
-				currentCrow %= Data.CrowCollection.Count;
-			})
-			.AddTo(this);
-	}
-	
+					else if (crow.CalcuateIsCurrentFlightActive() || Vector2.Distance(crow.CurPosition, Data.NestPosition) > 0.05f)
+					{
+						crow.SetFlightPath(crow.CurPosition, Data.NestPosition);
+					}
 
-	private IObservable<Unit> CrowUpdateAsObservable()
-	{
-		return Observable
-			.Timer(System.TimeSpan.Zero, Data.CrowUpdateDelta)
-			.Select(_ => new Unit());
+					currentCrow++;
+					currentCrow %= Data.CrowCollection.Count;
+				})
+				.AddTo(this);
+		}
+
+		public IObservable<Unit> OnCrowLogicUpdateAsObservable()
+		{
+			return Observable
+				.Timer(System.TimeSpan.Zero, Data.CrowLogicUpdateTimeSpan)
+				.Select(_ => new Unit());
+		}
 	}
 }

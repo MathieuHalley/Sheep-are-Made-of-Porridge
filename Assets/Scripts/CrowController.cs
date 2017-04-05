@@ -1,111 +1,99 @@
-﻿using UnityEngine;
-using UniRx;
+﻿using UniRx;
 using UniRx.Triggers;
-using System.Collections.Generic;
+using UnityEngine;
 
-public class CrowController : ReactiveController<CrowControllerData>
+namespace Assets.Scripts
 {
-	public ReactiveProperty<bool> IsFlightActiveProperty { get; private set; }
-	public bool IsFlightActive
+	public class CrowController : ReactiveController<CrowControllerData>
 	{
-		get { return IsFlightActiveProperty.Value; }
-		set { IsFlightActiveProperty.Value = value; }
-	}
-	public float CurrentFlightProgress
-	{
-		get
+		public FlightPath CurrentFlight { get { return Data.CurrentFlight;} }
+
+		private void Start()
 		{
-			return (Data.FlightSchedule.Count > 0) 
-				? Data.CurrentFlight.Progress(CurPosition) 
-				: (CurPosition == Data.FlightTarget.target ? 1f : 0f);
+			Data.FlightTarget = GetComponent<TargetJoint2D>();
+			FollowFlightPathSubscription();
+			OnSheepIsPorridgeSubscription();
 		}
-	}
-	public float CurrentFlightLength
-	{
-		get
+
+		public bool CalcuateIsCurrentFlightActive()
 		{
-			return Data.FlightSchedule.Count > 0 
-				? Data.CurrentFlight.Length 
+			var flightDistanceRemaining = (Data.FlightSchedule.Count > 0)
+				? Data.CurrentFlight.GetFlightDistanceRemaining(CurPosition)
 				: (CurPosition - Data.FlightTarget.target).magnitude;
+			var speed = Data.MaxVelocity * Time.fixedDeltaTime;
+			var isCurrentFlightActive = flightDistanceRemaining < speed;
+			Data.IsCurrentFlightActiveProperty.Value = isCurrentFlightActive;
+			return isCurrentFlightActive;
 		}
-	}
 
-	private void Awake()
-	{
-		IsFlightActiveProperty = new ReactiveProperty<bool>(false);
-		Data.FlightSchedule = new Queue<FlightPath>();
-		Data.FlightTarget = this.gameObject.GetComponent<TargetJoint2D>();
-		if (Data.FlightTarget == null)
+		public bool GetIsCurrentFlightActive()
 		{
-			Data.FlightTarget = this.gameObject.AddComponent<TargetJoint2D>();
+			return Data.IsCurrentFlightActiveProperty.Value;
 		}
-		Data.FlightTarget.maxForce = Data.MaxVelocity;
-	}
 
-	private void Start()
-	{
-		FollowFlightPathSubscription();
-	}
-	
-	public void EnqueueFlightPath(Vector2 start, Vector2 target)
-	{
-		Data.FlightSchedule.Enqueue(new FlightPath(start, target));
-		Data.FlightTarget.target = Data.CurrentFlight.Target;
-		SetIsFlightActive(true);
-	}
+		public void SetIsCurrentFlightActive(bool isActive)
+		{
+			Data.FlightTarget.enabled = isActive;
+			Data.IsCurrentFlightActiveProperty.Value = isActive;
+		}
 
-	public void SetFlightPath(Vector2 start, Vector2 target)
-	{
-		Data.FlightSchedule.Clear();
-		Data.FlightSchedule.Enqueue(new FlightPath(start, target));
-		Data.FlightTarget.target = Data.CurrentFlight.Target;
-		SetIsFlightActive(true);
-	}
+		public void ClearFlights()
+		{
+			Data.FlightSchedule.Clear();
+			SetIsCurrentFlightActive(false);
+		}
 
-	public void ClearFlights()
-	{
-		Data.FlightSchedule.Clear();
-		SetIsFlightActive(false);
-	}
+		public void EnqueueFlightPath(
+			Vector2 start,
+			Vector2 target,
+			float outTangentAngleStart = 0f,
+			float inTangentAngleTarget = 0f)
+		{
+			if (start == target) return;
+			Data.FlightSchedule.Enqueue(new FlightPath(start, target, outTangentAngleStart, inTangentAngleTarget));
+			Data.FlightTarget.target = Data.CurrentFlight.Target;
+			SetIsCurrentFlightActive(true);
+		}
 
-	private void SetIsFlightActive(bool isFlightActive)
-	{
-		IsFlightActive = isFlightActive;
-		Data.FlightTarget.enabled = isFlightActive;
-	}
+		public void SetFlightPath(
+			Vector2 start,
+			Vector2 target,
+			float outTangentAngleStart = 0f,
+			float inTangentAngleTarget = 0f)
+		{
+			Data.FlightSchedule.Clear();
+			EnqueueFlightPath(start, target, outTangentAngleStart, inTangentAngleTarget);
+		}
 
-	private System.IDisposable FollowFlightPathSubscription()
-	{
-		return
-		this.FixedUpdateAsObservable()
-			.Where(_ => Data.FlightSchedule.Count > 0)
-			.Subscribe(_ =>
-			{
-				foreach(FlightPath flight in Data.FlightSchedule)
+		private void FollowFlightPathSubscription()
+		{
+			this.FixedUpdateAsObservable()
+				.Where(_ => Data.FlightSchedule.Count > 0 && Data.IsCurrentFlightActiveProperty.Value)
+				.Subscribe(_ =>
 				{
-					flight.DrawFlightPath();
-				}
+					foreach (var flight in Data.FlightSchedule) flight.DrawFlightPath();
+					var vectorToPath = (Data.CurrentFlight.Evaluate(CurPosition) - CurPosition);
+					Rigidbody.AddForce(vectorToPath, ForceMode2D.Impulse);
+					Rigidbody.velocity = Vector2.ClampMagnitude(Rigidbody.velocity, Data.MaxVelocity);
+				})
+				.AddTo(this);
+		}
 
-				if (Data.CurrentFlight.Progress(CurPosition) > 0.99f || CurrentFlightLength < 0.01f)
+		private void OnSheepIsPorridgeSubscription()
+		{
+			Data.IsCurrentFlightActiveProperty
+				.AsObservable()
+				.DistinctUntilChanged()
+				.Subscribe(isCurrentFlightActive =>
 				{
+					if (isCurrentFlightActive || Data.FlightSchedule.Count == 0) return;
 					Data.FlightSchedule.Dequeue();
 					if (Data.FlightSchedule.Count == 0)
-					{
-						SetIsFlightActive(false);
-					}
+						SetIsCurrentFlightActive(false);
 					else
-					{
 						Data.FlightTarget.target = Data.CurrentFlight.Target;
-					}
-				}
-				else
-				{
-					float pathOffset = Data.CurrentFlight.Evaluate(CurPosition).y - CurPosition.y;
-					Rigidbody.AddForce(Vector2.up * pathOffset, ForceMode2D.Force);
-					Rigidbody.velocity = Vector2.ClampMagnitude(Rigidbody.velocity, Data.MaxVelocity);
-				}
-			})
-			.AddTo(this);
+				})
+				.AddTo(this);
+		}
 	}
-
 }

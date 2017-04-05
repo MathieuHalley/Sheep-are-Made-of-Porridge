@@ -1,67 +1,48 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-public class GameSceneManager : MonoBehaviour
+namespace Assets.Scripts.GameSceneManagement
 {
-	private static GameSceneManager instance;
-	public  static GameSceneManager Instance
+	public class GameSceneManager : MonoBehaviour
 	{
-		get
+		private static GameSceneManager _instance;
+
+		public static GameSceneManager Instance
 		{
-			if (instance == null)
+			get
 			{
-				var gameStateManager = GameObject.Find("GameStateManager");
-				if (gameStateManager == null)
-				{
-					gameStateManager = new GameObject("GameStateManager");
-				}
-				instance = gameStateManager.GetComponent<GameSceneManager>();
-				if (instance == null)
-				{
-					instance = gameStateManager.AddComponent<GameSceneManager>();
-				}
+				if (_instance != null) return _instance;
+				var gameStateManager = GameObject.Find("GameStateManager") ?? new GameObject("GameStateManager");
+				_instance = gameStateManager.GetComponent<GameSceneManager>() ?? gameStateManager.AddComponent<GameSceneManager>();
+				return _instance;
 			}
-			return instance;
 		}
-	}
 
-	public void LoadGameScenes(GameScene[] scenes)
-	{
-		for (var i = 0; i < scenes.Length; ++i)
+		public void LoadGameScenes(GameScene[] scenes)
 		{
-			StartCoroutine(LoadSceneAsync(scenes[i].sceneName));
+			foreach (var scene in scenes) StartCoroutine(LoadSceneAsync(scene.SceneName));
 		}
-	}
 
-	public void UnloadGameScenes(GameScene[] scenes)
-	{
-		for (var i = 0; i < scenes.Length; ++i)
+		public void UnloadGameScenes(GameScene[] scenes)
 		{
-			StartCoroutine(UnloadScene(scenes[i].sceneName));
+			foreach (var scene in scenes) StartCoroutine(UnloadScene(scene.SceneName));
 		}
-	}
 
-	IEnumerator LoadSceneAsync(string sceneName)
-	{
-		if (SceneManager.GetSceneByName(sceneName).isLoaded)
+		private static IEnumerator LoadSceneAsync(string sceneName)
 		{
-			yield break;
+			if (SceneManager.GetSceneByName(sceneName).isLoaded)
+				yield break;
+			var sceneLoadOp = SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Additive);
+			sceneLoadOp.allowSceneActivation = true;
+			while (!sceneLoadOp.isDone)
+				yield return null;
 		}
-		var sceneLoadOp = SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Additive);
-		sceneLoadOp.allowSceneActivation = true;
-		while (!sceneLoadOp.isDone)
-		{
-			yield return null;
-		}
-	}
 
-	IEnumerator UnloadScene(string sceneName)
-	{
-		while(!SceneManager.UnloadSceneAsync(sceneName).isDone)
+		private static IEnumerator UnloadScene(string sceneName)
 		{
-			yield return null;
+			while (!SceneManager.UnloadSceneAsync(sceneName).isDone)
+				yield return null;
 		}
 	}
 }

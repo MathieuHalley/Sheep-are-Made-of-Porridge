@@ -1,101 +1,106 @@
-﻿using UnityEngine;
-using UnityEngine.SceneManagement;
-using System;
-using System.Collections;
+﻿using System;
+using Assets.Scripts.GameSceneManagement;
+using UnityEngine;
 
-public enum GState { Loading, MainMenu, PauseMenu, Play }
-
-public interface IState
+namespace Assets.Scripts
 {
-	void Enter(IState oldState);
-	void Exit();
-	void Update();
-}
-
-[Serializable]
-public class GameState 
-	: IState
-{
-	public bool active;
-	public GameScene[] scenes;
-
-	public void Enter(IState oldState)
+	public enum GState
 	{
-		GameSceneManager.Instance.LoadGameScenes(scenes);
-		active = true;
+		Loading,
+		MainMenu,
+		PauseMenu,
+		Play
 	}
 
-	public void Exit()
+	public interface IState
 	{
-		GameSceneManager.Instance.UnloadGameScenes(scenes);
-		active = false;
+		void Enter();
+		void Exit();
+		void Update();
 	}
-	public virtual void Update() { }
-}
 
-public class GameStateManager 
-	: MonoBehaviour
-{
-	private static GameStateManager instance;
-	public static GameStateManager Instance
+	[Serializable]
+	public class GameState : IState
 	{
-		get
+		public bool IsActive { get; set; }
+		public GameScene[] Scenes { get; set; }
+
+		public void Enter()
 		{
-			if (instance == null)
+			GameSceneManager.Instance.LoadGameScenes(Scenes);
+			IsActive = true;
+		}
+
+		public void Exit()
+		{
+			if (Scenes != null) GameSceneManager.Instance.UnloadGameScenes(Scenes);
+			IsActive = false;
+		}
+
+		public virtual void Update()
+		{
+		}
+	}
+
+	public class GameStateManager : MonoBehaviour
+	{
+		public GState GameState;
+		public GameState LoadingState;
+		public GameState MenuState;
+		public GameState PauseState;
+		public PlayState PlayState;
+		private GameState _currentState;
+
+		private static GameStateManager _instance;
+
+		public static GameStateManager Instance
+		{
+			get
 			{
-				GameObject gameStateManagerGameObject;
-				gameStateManagerGameObject = GameObject.Find("GameStateManager");
-				gameStateManagerGameObject = (gameStateManagerGameObject != null) 
-					? gameStateManagerGameObject 
+				if (_instance != null) return _instance;
+				var gameStateManagerGameObject = GameObject.Find("GameStateManager");
+				gameStateManagerGameObject = (gameStateManagerGameObject != null)
+					? gameStateManagerGameObject
 					: new GameObject("GameStateManager");
-				instance = gameStateManagerGameObject.AddComponent<GameStateManager>();
+				_instance = gameStateManagerGameObject.AddComponent<GameStateManager>();
+				return _instance;
 			}
-			return instance;
 		}
-	}
 
-	public GState gameState;
-	public GameState loadingState;
-	public GameState menuState;
-	public GameState pauseState;
-	public PlayState playState;
-	private GameState currentState;
-
-	void Awake()
-	{
-		currentState = menuState;
-		menuState.Enter(default(IState));
-	}
-
-	void Update()
-	{
-		switch(gameState)
+		private void Awake()
 		{
-			case GState.Loading:
-				ChangeState(loadingState);
-				break;
-			case GState.MainMenu:
-				ChangeState(menuState);
-				break;
-			case GState.PauseMenu:
-				ChangeState(pauseState);
-				break;
-			case GState.Play:
-				ChangeState(playState);
-				break;
+			_currentState = MenuState;
+			MenuState.Enter();
 		}
-		currentState.Update();
-	}
 
-	void ChangeState(GameState newState)
-	{
-		if (!newState.active)
+		private void Update()
 		{
-			newState.Enter(currentState);
-			if (currentState.active)
-				currentState.Exit();
-			currentState = newState;
+			switch (GameState)
+			{
+				case GState.Loading:
+					ChangeState(LoadingState);
+					break;
+				case GState.MainMenu:
+					ChangeState(MenuState);
+					break;
+				case GState.PauseMenu:
+					ChangeState(PauseState);
+					break;
+				case GState.Play:
+					ChangeState(PlayState);
+					break;
+				default:
+					throw new ArgumentOutOfRangeException();
+			}
+			_currentState.Update();
+		}
+
+		private void ChangeState(GameState newState)
+		{
+			if (newState.IsActive) return;
+			newState.Enter();
+			if (_currentState.IsActive) _currentState.Exit();
+			_currentState = newState;
 		}
 	}
 }
-
