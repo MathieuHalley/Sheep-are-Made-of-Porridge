@@ -7,9 +7,9 @@ namespace Assets.Scripts
 	[System.Serializable]
 	public class SheepControllerData : ReactiveControllerData
 	{
-		[SerializeField] [UsedImplicitly] private ReactiveProperty<bool> _isGroundedProperty;
-		[SerializeField] [UsedImplicitly] private ReactiveProperty<bool> _isJumpingProperty;
-		[SerializeField] [UsedImplicitly] private ReactiveProperty<bool> _isPorridgeProperty;
+		private ReactiveProperty<bool> _isGroundedProperty;
+		private ReactiveProperty<bool> _isJumpingProperty;
+		private ReactiveProperty<bool> _isPorridgeProperty;
 		[SerializeField] [UsedImplicitly] private float _jumpHeight = 1f;
 		[SerializeField] [UsedImplicitly] private float _groundCheckRadius = 0.1f;
 		[SerializeField] [UsedImplicitly] private string _groundLayer = "Ground";
@@ -18,20 +18,21 @@ namespace Assets.Scripts
 		[SerializeField] [UsedImplicitly] private Collider2D _porridgeCollider;
 		[SerializeField] [UsedImplicitly] private GameObject _sheepBody;
 		[SerializeField] [UsedImplicitly] private Collider2D _sheepCollider;
+		[SerializeField] [UsedImplicitly] private SheepStats _sheepStats;
 
 		public ReactiveProperty<bool> IsGroundedProperty
 		{
-			get { return _isGroundedProperty ?? (_isGroundedProperty = new ReactiveProperty<bool>(false)); }
+			get { return GetBoolReactiveProperty(ref _isGroundedProperty, false); }
 		}
 
 		public ReactiveProperty<bool> IsJumpingProperty
 		{
-			get { return _isJumpingProperty ?? (_isJumpingProperty = new ReactiveProperty<bool>(false)); }
+			get { return GetBoolReactiveProperty(ref _isJumpingProperty, false); }
 		}
 
 		public ReactiveProperty<bool> IsPorridgeProperty
 		{
-			get { return _isPorridgeProperty ?? (_isPorridgeProperty = new ReactiveProperty<bool>(_porridgeCollider.enabled)); }
+			get { return GetBoolReactiveProperty(ref _isPorridgeProperty, _porridgeCollider.enabled); }
 		}
 
 		public float JumpHeight
@@ -72,6 +73,11 @@ namespace Assets.Scripts
 		public Collider2D SheepCollider
 		{
 			get { return _sheepCollider; }
+		}
+
+		public SheepStats SheepHealthProperty
+		{
+			get { return _sheepStats; }
 		}
 	}
 }

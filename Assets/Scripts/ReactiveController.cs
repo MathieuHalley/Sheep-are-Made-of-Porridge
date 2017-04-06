@@ -7,17 +7,24 @@ namespace Assets.Scripts
 		where T : ReactiveControllerData
 	{
 		[SerializeField] private T _data;
+		private Rigidbody2D _rigidbody;
 
 		protected T Data
 		{
-			get { return _data ?? (_data = default(T)); }
+			get
+			{
+				if (_data != null) return _data;
+				return _data = default(T);
+			}
 		}
-
-		private Rigidbody2D _rigidbody;
 
 		public Rigidbody2D Rigidbody
 		{
-			get { return _rigidbody ?? (_rigidbody = GetComponent<Rigidbody2D>() ?? gameObject.AddComponent<Rigidbody2D>()); }
+			get
+			{
+				if (_rigidbody != null) return _rigidbody;
+				return _rigidbody = gameObject.GetComponent<Rigidbody2D>() ?? gameObject.AddComponent<Rigidbody2D>();
+			}
 		}
 
 		public Vector2 CurPosition

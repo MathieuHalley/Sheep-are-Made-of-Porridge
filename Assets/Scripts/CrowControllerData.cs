@@ -15,12 +15,18 @@ namespace Assets.Scripts
 
 		public FlightPath CurrentFlight
 		{
-			get { return FlightSchedule.Count > 0 ? FlightSchedule.Peek() : null; }
+			get
+			{
+				return FlightSchedule.Count > 0 ? FlightSchedule.Peek() : null;
+			}
 		}
 
 		public Queue<FlightPath> FlightSchedule
 		{
-			get { return _flightSchedule ?? (_flightSchedule = new Queue<FlightPath>()); }
+			get
+			{
+				return _flightSchedule ?? (_flightSchedule = new Queue<FlightPath>());
+			}
 		}
 
 		public TargetJoint2D FlightTarget
@@ -35,7 +41,7 @@ namespace Assets.Scripts
 
 		public ReactiveProperty<bool> IsCurrentFlightActiveProperty
 		{
-			get { return _isCurrentFlightActiveProperty ?? (_isCurrentFlightActiveProperty = new ReactiveProperty<bool>(false)); }
+			get { return GetBoolReactiveProperty(ref _isCurrentFlightActiveProperty, false); }
 		}
 
 		public float MaxVelocity
